@@ -1,8 +1,5 @@
 # license-pool
 Practical Computer Security Project under Prof. Kevin Chen
-# Project Title
-
-One Paragraph of project description goes here
 
 ## Getting Started
 
