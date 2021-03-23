@@ -1,5 +1,4 @@
-######################################################################
-# Copyright 2016, 2020 John Rofrano. All Rights Reserved.
+# Copyright 2016, 2017 John Rofrano. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the 'License');
 # you may not use this file except in compliance with the License.
@@ -12,134 +11,204 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-######################################################################
 """
-Counter Model
+Models for Pet Demo Service
+
+All of the models are stored in this module
+
+Models
+------
+Pet - A Pet used in the Pet Store
+
+Attributes:
+-----------
+name (string) - the name of the pet
+category (string) - the category the pet belongs to (i.e., dog, cat)
+available (boolean) - True for pets that are available for adoption
+
 """
-import os
-import re
 import logging
-from redis import Redis
-from redis.exceptions import ConnectionError
+from flask_sqlalchemy import SQLAlchemy
 
-logger = logging.getLogger(__name__)
-
-DATABASE_URI = os.getenv("DATABASE_URI", "redis://localhost:6379")
+# Create the SQLAlchemy object to be initialized later in init_db()
+db = SQLAlchemy()
 
 
-class DatabaseConnectionError(ConnectionError):
+class DataValidationError(Exception):
+    """ Used for an data validation errors when deserializing """
+
     pass
 
 
-class Counter(object):
-    """An integer counter that is persisted in Redis
+class Pet(db.Model):
+    """
+    Class that represents a Pet
 
-    You can establish a connection to Redis using an environment
-    variable DATABASE_URI in the following format:
-
-        DATABASE_URI="redis://userid:password@localhost:6379/0"
-
-    This follows the same standards as SQLAlchemy URIs
+    This version uses a relational database for persistence which is hidden
+    from us by SQLAlchemy's object relational mappings (ORM)
     """
 
-    redis = None
+    logger = logging.getLogger(__name__)
+    app = None
 
-    def __init__(self, name: str="hits", value: int=None):
-        """ Constructor """
-        self.name = name
-        if not value:
-            self.value = 0
-        else:
-            self.value = value
+    ##################################################
+    # Table Schema
+    ##################################################
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(63))
+    category = db.Column(db.String(63))
+    available = db.Column(db.Boolean())
 
-    @property
-    def value(self):
-        """ Returns the current value of the counter """
-        return int(Counter.redis.get(self.name))
+    ##################################################
+    # INSTANCE METHODS
+    ##################################################
 
-    @value.setter
-    def value(self, value):
-        """ Sets the value of the counter """
-        Counter.redis.set(self.name, value)
+    def __repr__(self):
+        return "<Pet %r>" % (self.name)
 
-    @value.deleter
-    def value(self):
-        """ Removes the counter fom the database """
-        Counter.redis.delete(self.name)
+    def create(self):
+        """
+        Creates a Pet to the data store
+        """
+        db.session.add(self)
+        db.session.commit()
 
-    def increment(self):
-        """ Increments the current value of the counter by 1 """
-        return Counter.redis.incr(self.name)
+    def update(self):
+        """
+        Updates a Pet to the data store
+        """
+        if not self.id:
+            raise DataValidationError("Update called with empty ID field")
+        db.session.commit()
+
+    def delete(self):
+        """ Removes a Pet from the data store """
+        db.session.delete(self)
+        db.session.commit()
 
     def serialize(self):
-        return dict(name=self.name, counter=int(Counter.redis.get(self.name)))
+        """ Serializes a Pet into a dictionary """
+        return {
+            "id": self.id,
+            "name": self.name,
+            "category": self.category,
+            "available": self.available,
+        }
 
-    ######################################################################
-    #  F I N D E R   M E T H O D S
-    ######################################################################
+    def deserialize(self, data: dict):
+        """
+        Deserializes a Pet from a dictionary
+
+        :param data: a dictionary of attributes
+        :type data: dict
+
+        :return: a reference to self
+        :rtype: Pet
+
+        """
+        try:
+            self.name = data["name"]
+            self.category = data["category"]
+            self.available = data["available"]
+        except KeyError as error:
+            raise DataValidationError("Invalid pet: missing " + error.args[0])
+        except TypeError as error:
+            raise DataValidationError(
+                "Invalid pet: body of request contained bad or no data"
+            )
+        return self
+
+    ##################################################
+    # CLASS METHODS
+    ##################################################
+
+    @classmethod
+    def init_db(cls, app):
+        """Initializes the database session
+
+        :param app: the Flask app
+        :type data: Flask
+
+        """
+        cls.logger.info("Initializing database")
+        cls.app = app
+        # This is where we initialize SQLAlchemy from the Flask app
+        db.init_app(app)
+        app.app_context().push()
+        db.create_all()  # make our sqlalchemy tables
 
     @classmethod
     def all(cls):
-        """ Returns all of the counters """
-        return [dict(name=key, counter=int(cls.redis.get(key))) for key in cls.redis.keys('*')]
+        """ Returns all of the Pets in the database """
+        cls.logger.info("Processing all Pets")
+        return cls.query.all()
 
     @classmethod
-    def find(cls, name):
-        """ Finds a counter with the name or returns None """
-        count = cls.redis.get(name)
-        if count:
-            return Counter(name, count)
-        return None
+    def find(cls, pet_id: int):
+        """Finds a Pet by it's ID
 
-    @classmethod
-    def remove_all(cls):
-        cls.redis.flushall()
+        :param pet_id: the id of the Pet to find
+        :type pet_id: int
 
-    ######################################################################
-    #  R E D I S   D A T A B A S E   C O N N E C T I O N   M E T H O D S
-    ######################################################################
+        :return: an instance with the pet_id, or None if not found
+        :rtype: Pet
 
-    @classmethod
-    def test_connection(cls):
-        """ Test connection by pinging the host """
-        success = False
-        try:
-            cls.redis.ping()
-            logger.info("Connection established")
-            success = True
-        except ConnectionError:
-            logger.warning("Connection Error!")
-        return success
-
-    @classmethod
-    def connect(cls, database_uri=None):
-        """Established database connection
-
-        Arguments:
-            database_uri: a uri to the Redis database
-
-        Raises:
-            DatabaseConnectionError: Could not connect
         """
-        if not database_uri:
-            if "DATABASE_URI" in os.environ and os.environ["DATABASE_URI"]:
-                database_uri = os.environ["DATABASE_URI"]
-            else:
-                msg = "DATABASE_URI is missing from environment."
-                logger.error(msg)
-                raise DatabaseConnectionError(msg)
+        cls.logger.info("Processing lookup for id %s ...", pet_id)
+        return cls.query.get(pet_id)
 
-        logger.info("Attempting to connecting to Redis...")
+    @classmethod
+    def find_or_404(cls, pet_id: int):
+        """Find a Pet by it's id
 
-        cls.redis = Redis.from_url(
-            database_uri, encoding="utf-8", decode_responses=True
-        )
+        :param pet_id: the id of the Pet to find
+        :type pet_id: int
 
-        if not cls.test_connection():
-            # if you end up here, redis instance is down.
-            cls.redis = None
-            logger.fatal("*** FATAL ERROR: Could not connect to the Redis Service")
-            raise DatabaseConnectionError("Could not connect to the Redis Service")
+        :return: an instance with the pet_id, or 404_NOT_FOUND if not found
+        :rtype: Pet
 
-        logger.info("Successfully connected to Redis")
-        return cls.redis
+        """
+        cls.logger.info("Processing lookup or 404 for id %s ...", pet_id)
+        return cls.query.get_or_404(pet_id)
+
+    @classmethod
+    def find_by_name(cls, name: str):
+        """Returns all Pets with the given name
+
+        :param name: the name of the Pets you want to match
+        :type name: str
+
+        :return: a collection of Pets with that name
+        :rtype: list
+
+        """
+        cls.logger.info("Processing name query for %s ...", name)
+        return cls.query.filter(cls.name == name)
+
+    @classmethod
+    def find_by_category(cls, category: str):
+        """Returns all of the Pets in a category
+
+        :param category: the category of the Pets you want to match
+        :type category: str
+
+        :return: a collection of Pets in that category
+        :rtype: list
+
+        """
+        cls.logger.info("Processing category query for %s ...", category)
+        return cls.query.filter(cls.category == category)
+
+    @classmethod
+    def find_by_availability(cls, available: bool = True):
+        """Returns all Pets by their availability
+
+        :param available: True for pets that are available
+        :type available: str
+
+        :return: a collection of Pets that are available
+        :rtype: list
+
+        """
+        cls.logger.info("Processing available query for %s ...", available)
+        return cls.query.filter(cls.available == available)

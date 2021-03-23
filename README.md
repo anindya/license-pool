@@ -13,7 +13,9 @@ See deployment for notes on how to deploy the project on a live system.
 
 ```
 virtualbox + vagrant
+```
 OR
+```
 docker
 ```
 
@@ -32,37 +34,32 @@ docker
     docker run hello-world
     ```
 
-3. Build Docker image for the Flask App
+3. Go to the project root directory (it's synced with `/vagrant` in the VM)
 
     ```sh
-    docker build -t flaskapp:1.0 .
+    cd /vagrant
     ```
 
-4. Spin up a Flask App Container
+4. Spin up example Flask app and Postgres database instance with docker-compose
 
     ```sh
-    docker run -p 8080:8080 flaskapp:1.0
+    docker-compose up
     ```
 
-5. Open `http://localhost:8080/` or `http://192.168.33.10:8080/`(if using vagrant VM) in a browser on your host machine. You should see the front page of the Flask App.
-
-6. Use `ctrl+c` to stop the container, run `docker container ps -a` to see all the containers (including stopped ones), and then use `docker rm <container_name or container_id>` to remove the container.
-
-7. Spin up multiple containers with docker-compose
+5. Test the endpoints with POSTMAN or curl from your host machine
 
     ```sh
-    docker-compose up -d  # run as deamon
+    # create a new pet
+    curl -H "Content-Type: application/json" \
+    -X POST \
+    -d '{"name":"shiba","category":"dog","available":true}' \
+    http://192.168.33.10:5000/pets
+
+    # list all pets
+    curl -X GET http://192.168.33.10:5000/pets        
     ```
 
-8. Test the endpoints with POSTMAN or curl from your host machine
-
-    ```sh
-    curl -X POST http://192.168.33.10:8080/counters/test  # create a new counter called test
-    curl -X PUT http://192.168.33.10:8080/counters/test   # increment the count by 1
-    curl -X GET http://192.168.33.10:8080/counters        # list all counters
-    ```
-
-## Running the tests
+<!-- ## Running the tests
 
 Explain how to run the automated tests for this system
 
@@ -76,7 +73,7 @@ Give an example
 
 ## Deployment
 
-Add additional notes about how to deploy this on a live system
+Add additional notes about how to deploy this on a live system -->
 
 ## Acknowledgments
-- The `Vagrantfile`, `Dockerfile`, `docker-compose.yml`, and the `service` directory are based on John J. Rofrano's [nyu-devops/lab-kubernetes](https://github.com/nyu-devops/lab-kubernetes)
+- The `Vagrantfile`, `Dockerfile`, `docker-compose.yml`, `config.py` and the `service` directory are based on John J. Rofrano's [nyu-devops/lab-kubernetes](https://github.com/nyu-devops/lab-kubernetes) and [nyu-devops/lab-flask-tdd](https://github.com/nyu-devops/lab-flask-tdd)

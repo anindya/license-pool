@@ -8,27 +8,29 @@ services:
     container_name: flaskapp
     hostname: flaskapp
     ports:
-      - "8080:8080"
+      - "5000:5000"
     environment:
-      DATABASE_URI: "redis://redis:6379/0"
+      DATABASE_URI: "postgresql://postgres:postgres@postgres:5432/postgres"
     depends_on:
-      - redis
+      - postgres
     networks:
       - web
 
-  redis:
-    image: redis:6-alpine
+  postgres:
+    image: postgres:alpine
     restart: always
-    hostname: redis
+    hostname: postgres
     ports:
-      - "6379:6379"
+      - "5432:5432"
     volumes:
-      - redis-data:/data
+      - psql_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "postgres"
     networks:
       - web
 
 volumes:
-  redis-data:
+  psql_data:
 
 networks:
   web:
