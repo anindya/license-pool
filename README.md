@@ -43,6 +43,7 @@ docker
 4. Spin up example Flask app and Postgres database instance with docker-compose
 
     ```sh
+    cd /vagrant/AuthSrvr
     docker-compose up
     ```
 
@@ -59,6 +60,43 @@ docker
     curl -X GET http://192.168.33.10:5000/pets        
     ```
 
+6. Build image and spin up the example containerized app (also a Flask server)
+
+    ```sh
+    cd /vagrant/App
+    docker build -t app:1.0 . 
+    docker run -p 9090:9090 --name app app:1.0
+    ```
+
+7. Test the endpoints with POSTMAN or curl from your host machine
+
+    ```sh
+    # get the welcome page
+    curl -X GET http://192.168.33.10:9090/
+
+    # get a fibonacci number
+    curl -X GET http://192.168.33.10:9090/fibonacci?number=10 
+    ```
+
+8. Remove the containers and/or images
+
+    ```sh
+    # list all containers
+    docker container ls -a #list all containers, including stopped ones
+
+    # remove containers
+    docker rm <container name or container id> #<another container name> ...etc.
+
+    #remove images
+    docker rmi <image name>
+    ```
+   
+9.  Exit and stop the VM
+
+    ```sh
+    exit
+    vagrant halt
+    ```
 <!-- ## Running the tests
 
 Explain how to run the automated tests for this system
