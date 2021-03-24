@@ -1,32 +1,33 @@
-# Copyright 2016, 2017 John Rofrano. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the 'License');
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an 'AS IS' BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Code adapted from John J. Rofrano's [nyu-devops/lab-flask-tdd]:
+# https://github.com/nyu-devops/lab-flask-tdd
+
 """
-Models for Pet Demo Service
+Models for the Authorizing Service
 
 All of the models are stored in this module
 
 Models
 ------
-Pet - A Pet used in the Pet Store
-
-Attributes:
------------
-name (string) - the name of the pet
-category (string) - the category the pet belongs to (i.e., dog, cat)
-available (boolean) - True for pets that are available for adoption
+License - A license in the pool
+    Attributes:
+    -----------
+    username (string) 
+        - the username of the owner
+    used_by (string) 
+        - the container_id (or other non-forgeable identifier for containers)
+    is_available (boolean) 
+        - True for license that's not in use by any container
+          (TODO: do we need this is we already have the used_by field?)
+    private_key_path (string) 
+        - PATH to PEM file of private_key of a license (a unique private_key/public_key pair)
+    public_key_path (string) 
+        - PATH to PEM file of public_key of a license (a unique private_key/public_key pair)
+    last_issued (date/timestamp) 
+        - lastest timestamp when a license was assigned to a container 
+          (TODO: confirm this definition)
 
 """
+
 import logging
 from flask_sqlalchemy import SQLAlchemy
 
@@ -40,9 +41,9 @@ class DataValidationError(Exception):
     pass
 
 
-class Pet(db.Model):
+class License(db.Model):
     """
-    Class that represents a Pet
+    Class that represents a License
 
     This version uses a relational database for persistence which is hidden
     from us by SQLAlchemy's object relational mappings (ORM)
@@ -55,66 +56,75 @@ class Pet(db.Model):
     # Table Schema
     ##################################################
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(63))
-    category = db.Column(db.String(63))
-    available = db.Column(db.Boolean())
+    username = db.Column(db.String(64))
+    used_by = db.Column(db.String(64))
+    private_key_path = db.Column(db.String(260))
+    public_key_path = db.Column(db.String(260))
+    is_available = db.Column(db.Boolean())
+    last_issued = db.Column(db.Time())
 
     ##################################################
     # INSTANCE METHODS
     ##################################################
 
     def __repr__(self):
-        return "<Pet %r>" % (self.name)
+        return "<License %r>" % (self.name)
 
     def create(self):
         """
-        Creates a Pet to the data store
+        Creates a License to the data store
         """
         db.session.add(self)
         db.session.commit()
 
     def update(self):
         """
-        Updates a Pet to the data store
+        Updates a License to the data store
         """
         if not self.id:
             raise DataValidationError("Update called with empty ID field")
         db.session.commit()
 
     def delete(self):
-        """ Removes a Pet from the data store """
+        """ Removes a License from the data store """
         db.session.delete(self)
         db.session.commit()
 
     def serialize(self):
-        """ Serializes a Pet into a dictionary """
+        """ Serializes a License into a dictionary """
         return {
             "id": self.id,
-            "name": self.name,
-            "category": self.category,
-            "available": self.available,
+            "username": self.username,
+            "used_by": self.used_by,
+            "private_key_path": self.private_key_path,
+            "public_key_path": self.public_key_path,
+            "is_available": self.is_available,
+            "last_issued": self.last_issued,
         }
 
     def deserialize(self, data: dict):
         """
-        Deserializes a Pet from a dictionary
+        Deserializes a License from a dictionary
 
         :param data: a dictionary of attributes
         :type data: dict
 
         :return: a reference to self
-        :rtype: Pet
+        :rtype: License
 
         """
         try:
-            self.name = data["name"]
-            self.category = data["category"]
-            self.available = data["available"]
+            self.username = data["username"]
+            self.used_by = data["used_by"]
+            self.private_key_path = data["private_key_path"]
+            self.public_key_path = data["public_key_path"]
+            self.is_available = data["is_available"]
+            self.last_issued = data["last_issued"]
         except KeyError as error:
-            raise DataValidationError("Invalid pet: missing " + error.args[0])
+            raise DataValidationError("Invalid License: missing " + error.args[0])
         except TypeError as error:
             raise DataValidationError(
-                "Invalid pet: body of request contained bad or no data"
+                "Invalid License: body of request contained bad or no data"
             )
         return self
 
@@ -139,76 +149,76 @@ class Pet(db.Model):
 
     @classmethod
     def all(cls):
-        """ Returns all of the Pets in the database """
-        cls.logger.info("Processing all Pets")
+        """ Returns all of the Licenses in the database """
+        cls.logger.info("Processing all Licenses")
         return cls.query.all()
 
     @classmethod
-    def find(cls, pet_id: int):
-        """Finds a Pet by it's ID
+    def find(cls, license_id: int):
+        """Finds a License by it's ID
 
-        :param pet_id: the id of the Pet to find
-        :type pet_id: int
+        :param license_id: the id of the License to find
+        :type license_id: int
 
-        :return: an instance with the pet_id, or None if not found
-        :rtype: Pet
+        :return: an instance with the license_id, or None if not found
+        :rtype: License
 
         """
-        cls.logger.info("Processing lookup for id %s ...", pet_id)
-        return cls.query.get(pet_id)
+        cls.logger.info("Processing lookup for id %s ...", license_id)
+        return cls.query.get(license_id)
 
     @classmethod
-    def find_or_404(cls, pet_id: int):
-        """Find a Pet by it's id
+    def find_or_404(cls, license_id: int):
+        """Find a License by it's id
 
-        :param pet_id: the id of the Pet to find
-        :type pet_id: int
+        :param license_id: the id of the License to find
+        :type license_id: int
 
-        :return: an instance with the pet_id, or 404_NOT_FOUND if not found
-        :rtype: Pet
-
-        """
-        cls.logger.info("Processing lookup or 404 for id %s ...", pet_id)
-        return cls.query.get_or_404(pet_id)
-
-    @classmethod
-    def find_by_name(cls, name: str):
-        """Returns all Pets with the given name
-
-        :param name: the name of the Pets you want to match
-        :type name: str
-
-        :return: a collection of Pets with that name
-        :rtype: list
+        :return: an instance with the license_id, or 404_NOT_FOUND if not found
+        :rtype: License
 
         """
-        cls.logger.info("Processing name query for %s ...", name)
-        return cls.query.filter(cls.name == name)
+        cls.logger.info("Processing lookup or 404 for id %s ...", license_id)
+        return cls.query.get_or_404(license_id)
 
-    @classmethod
-    def find_by_category(cls, category: str):
-        """Returns all of the Pets in a category
+    # @classmethod
+    # def find_by_name(cls, name: str):
+    #     """Returns all Pets with the given name
 
-        :param category: the category of the Pets you want to match
-        :type category: str
+    #     :param name: the name of the Pets you want to match
+    #     :type name: str
 
-        :return: a collection of Pets in that category
-        :rtype: list
+    #     :return: a collection of Pets with that name
+    #     :rtype: list
 
-        """
-        cls.logger.info("Processing category query for %s ...", category)
-        return cls.query.filter(cls.category == category)
+    #     """
+    #     cls.logger.info("Processing name query for %s ...", name)
+    #     return cls.query.filter(cls.name == name)
 
-    @classmethod
-    def find_by_availability(cls, available: bool = True):
-        """Returns all Pets by their availability
+    # @classmethod
+    # def find_by_category(cls, category: str):
+    #     """Returns all of the Pets in a category
 
-        :param available: True for pets that are available
-        :type available: str
+    #     :param category: the category of the Pets you want to match
+    #     :type category: str
 
-        :return: a collection of Pets that are available
-        :rtype: list
+    #     :return: a collection of Pets in that category
+    #     :rtype: list
 
-        """
-        cls.logger.info("Processing available query for %s ...", available)
-        return cls.query.filter(cls.available == available)
+    #     """
+    #     cls.logger.info("Processing category query for %s ...", category)
+    #     return cls.query.filter(cls.category == category)
+
+    # @classmethod
+    # def find_by_availability(cls, available: bool = True):
+    #     """Returns all Pets by their availability
+
+    #     :param available: True for pets that are available
+    #     :type available: str
+
+    #     :return: a collection of Pets that are available
+    #     :rtype: list
+
+    #     """
+    #     cls.logger.info("Processing available query for %s ...", available)
+    #     return cls.query.filter(cls.available == available)
