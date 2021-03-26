@@ -47,14 +47,20 @@ docker
 5. Test the endpoints with POSTMAN or curl from your host machine
 
     ```sh
-    # create a new pet
+    # create a new licenses
     curl -H "Content-Type: application/json" \
     -X POST \
-    -d '{"name":"shiba","category":"dog","available":true}' \
-    http://192.168.33.10:5000/pets
+    -d '{"username":"tester","used_by":null,"is_available":true,"private_key_path":"keys/private_tester_1.pem","public_key_path":"keys/public_tester_1.pem","last_issued":null}' \
+    http://192.168.33.10:5000/licenses
 
-    # list all pets
-    curl -X GET http://192.168.33.10:5000/pets        
+    # update a licenses
+    curl -H "Content-Type: application/json" \
+    -X POST \
+    -d '{"username":"tester","used_by":"12d8c6885151","is_available":false,"private_key_path":"keys/private_tester_1.pem","public_key_path":"keys/public_tester_1.pem","last_issued":"2021-03-24 04:05:06"}' \
+    http://192.168.33.10:5000/licenses/1
+
+    # list all licenses
+    curl -X GET http://192.168.33.10:5000/licenses        
     ```
 
 6. Build image and spin up the example containerized app (also a Flask server)

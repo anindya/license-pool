@@ -4,9 +4,9 @@ services:
 
   app:
     build: .
-    image: flaskapp:1.0
-    container_name: flaskapp
-    hostname: flaskapp
+    image: authserver:1.0
+    container_name: authserver
+    hostname: authserver
     ports:
       - "5000:5000"
     environment:
