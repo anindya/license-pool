@@ -1,0 +1,36 @@
+version: "3"
+
+services:
+
+  app:
+    build: .
+    image: flaskapp:1.0
+    container_name: flaskapp
+    hostname: flaskapp
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URI: "postgresql://postgres:postgres@postgres:5432/postgres"
+    depends_on:
+      - postgres
+    networks:
+      - web
+
+  postgres:
+    image: postgres:alpine
+    restart: always
+    hostname: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - psql_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "postgres"
+    networks:
+      - web
+
+volumes:
+  psql_data:
+
+networks:
+  web:
