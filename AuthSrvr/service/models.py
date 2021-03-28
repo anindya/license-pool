@@ -291,11 +291,11 @@ class License(db.Model):
     ##################################################
     # Table Schema
     ##################################################
-    id = db.Column(db.Integer, primary_key=True)
-    uname = db.Column(db.String(64))
-    public_key = db.Column(db.Text())
+    id = db.Column(db.Integer, unique=True)
+    uname = db.Column(db.String(64), primary_key=True)
+    public_key = db.Column(db.Text(), primary_key=True)
     private_key = db.Column(db.Text())
-    in_use = db.Column(db.Boolean())
+    in_use = db.Column(db.Boolean(), index=True)
     container_id = db.Column(db.String(64))
     last_used = db.Column(db.DateTime())
 
