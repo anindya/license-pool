@@ -8,24 +8,35 @@ All of the models are stored in this module
 
 Models
 ------
-License - A license in the pool
+User - a registered user
     Attributes:
     -----------
-    username (string) 
-        - the username of the owner
-    used_by (string) 
-        - the container_id (or other non-forgeable identifier for containers)
-    is_available (boolean) 
-        - True for license that's not in use by any container
-          (TODO: do we need this is we already have the used_by field?)
-    private_key_path (string) 
-        - PATH to PEM file of private_key of a license (a unique private_key/public_key pair)
-    public_key_path (string) 
-        - PATH to PEM file of public_key of a license (a unique private_key/public_key pair)
-    last_issued (date/timestamp) 
-        - lastest timestamp when a license was assigned to a container 
-          (TODO: confirm this definition)
+    uname (string) - the username
+    password (string) - the hashed password
 
+License_Permit - a record of the number of license allowed and the number of license in use for each user
+    Attributes:
+    -----------
+    uname (string) - the username
+    max_licenses (integer) 
+        - the number of license allowed for this user
+    in_use (integer) 
+        - the number of license currently in use for this user
+
+License - a license
+    Attributes:
+    -----------
+    uname (string) - the username
+    public_key (text) 
+        - plain text of the public_key
+    private_key (text) 
+        - plain text of the public_key
+    in_use (boolean) 
+        - True for license that's in use by any container
+    container_id (string) 
+        - the container_id of the container that's currently using the license
+    last_used (datetime) 
+        - datetime when a license was last assigned to a container
 """
 
 import logging
@@ -39,6 +50,231 @@ class DataValidationError(Exception):
     """ Used for an data validation errors when deserializing """
 
     pass
+
+class User(db.Model):
+    """
+    Class that represents a User
+    """
+
+    logger = logging.getLogger(__name__)
+    app = None
+
+    ##################################################
+    # Table Schema
+    ##################################################
+    id = db.Column(db.Integer, primary_key=True)
+    uname = db.Column(db.String(64)) #TODO: need to confirm the data type
+    password = db.Column(db.String(128)) #TODO: need to confirm the data type
+
+    ##################################################
+    # INSTANCE METHODS
+    ##################################################
+
+    def __repr__(self):
+        return "<User %r>" % (self.id)
+
+    def create(self):
+        """
+        Creates a User to the data store
+        """
+        db.session.add(self)
+        db.session.commit()
+
+    def update(self):
+        """
+        Updates a User to the data store
+        """
+        if not self.id:
+            raise DataValidationError("Update called with empty ID field")
+        db.session.commit()
+
+    def delete(self):
+        """ Removes a User from the data store """
+        db.session.delete(self)
+        db.session.commit()
+
+    def serialize(self):
+        """ Serializes a User into a dictionary """
+        return {
+            "id": self.id,
+            "uname": self.uname,
+            "password": self.password,
+        }
+
+    def deserialize(self, data: dict):
+        """
+        Deserializes a User from a dictionary
+
+        :param data: a dictionary of attributes
+        :type data: dict
+
+        :return: a reference to self
+        :rtype: User
+
+        """
+        try:
+            self.uname = data["uname"]
+            self.password = data["password"]
+        except KeyError as error:
+            raise DataValidationError("Invalid User: missing " + error.args[0])
+        except TypeError as error:
+            raise DataValidationError(
+                "Invalid User: body of request contained bad or no data"
+            )
+        return self
+
+    ##################################################
+    # CLASS METHODS
+    ##################################################
+
+    @classmethod
+    def all(cls):
+        """ Returns all of the Users in the database """
+        cls.logger.info("Processing all Users")
+        return cls.query.all()
+
+    @classmethod
+    def find(cls, user_id: int):
+        """Finds a User by it's ID
+
+        :param user_id: the id of the User to find
+        :type user_id: int
+
+        :return: an instance with the user_id, or None if not found
+        :rtype: User
+
+        """
+        cls.logger.info("Processing lookup for id %s ...", user_id)
+        return cls.query.get(user_id)
+
+    @classmethod
+    def find_or_404(cls, user_id: int):
+        """Find a User by it's id
+
+        :param user_id: the id of the User to find
+        :type user_id: int
+
+        :return: an instance with the user_id, or 404_NOT_FOUND if not found
+        :rtype: User
+
+        """
+        cls.logger.info("Processing lookup or 404 for id %s ...", user_id)
+        return cls.query.get_or_404(user_id)
+
+
+
+class License_Permit(db.Model):
+    """
+    Class that represents a License_Permit
+    """
+
+    logger = logging.getLogger(__name__)
+    app = None
+
+    ##################################################
+    # Table Schema
+    ##################################################
+    id = db.Column(db.Integer, primary_key=True)
+    uname = db.Column(db.String(64))
+    max_licenses = db.Column(db.Integer)
+    in_use = db.Column(db.Integer)
+
+    ##################################################
+    # INSTANCE METHODS
+    ##################################################
+
+    def __repr__(self):
+        return "<License_Permit %r>" % (self.id)
+
+    def create(self):
+        """
+        Creates a License_Permit to the data store
+        """
+        db.session.add(self)
+        db.session.commit()
+
+    def update(self):
+        """
+        Updates a License_Permit to the data store
+        """
+        if not self.id:
+            raise DataValidationError("Update called with empty ID field")
+        db.session.commit()
+
+    def delete(self):
+        """ Removes a License_Permit from the data store """
+        db.session.delete(self)
+        db.session.commit()
+
+    def serialize(self):
+        """ Serializes a License_Permit into a dictionary """
+        return {
+            "id": self.id,
+            "uname": self.uname,
+            "max_licenses": self.max_licenses,
+            "in_use": self.in_use,
+        }
+
+    def deserialize(self, data: dict):
+        """
+        Deserializes a License_Permit from a dictionary
+
+        :param data: a dictionary of attributes
+        :type data: dict
+
+        :return: a reference to self
+        :rtype: License_Permit
+
+        """
+        try:
+            self.uname = data["uname"]
+            self.max_licenses = data["max_licenses"]
+            self.in_use = data["in_use"]
+        except KeyError as error:
+            raise DataValidationError("Invalid License: missing " + error.args[0])
+        except TypeError as error:
+            raise DataValidationError(
+                "Invalid License: body of request contained bad or no data"
+            )
+        return self
+
+    ##################################################
+    # CLASS METHODS
+    ##################################################
+
+    @classmethod
+    def all(cls):
+        """ Returns all of the License_Permit in the database """
+        cls.logger.info("Processing all License_Permit")
+        return cls.query.all()
+
+    @classmethod
+    def find(cls, license_permit_id: int):
+        """Finds a License_Permit by it's ID
+
+        :param license_permit_id: the id of the License_Permit to find
+        :type license_permit_id: int
+
+        :return: an instance with the license_permit_id, or None if not found
+        :rtype: License_Permit
+
+        """
+        cls.logger.info("Processing lookup for id %s ...", license_permit_id)
+        return cls.query.get(license_permit_id)
+
+    @classmethod
+    def find_or_404(cls, license_permit_id: int):
+        """Find a License_Permit by it's id
+
+        :param license_permit_id: the id of the License_Permit to find
+        :type license_permit_id: int
+
+        :return: an instance with the license_permit_id, or 404_NOT_FOUND if not found
+        :rtype: License_Permit
+
+        """
+        cls.logger.info("Processing lookup or 404 for id %s ...", license_permit_id)
+        return cls.query.get_or_404(license_permit_id)
 
 
 class License(db.Model):
@@ -56,19 +292,19 @@ class License(db.Model):
     # Table Schema
     ##################################################
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64))
-    used_by = db.Column(db.String(64))
-    private_key_path = db.Column(db.String(260))
-    public_key_path = db.Column(db.String(260))
-    is_available = db.Column(db.Boolean())
-    last_issued = db.Column(db.Time())
+    uname = db.Column(db.String(64))
+    public_key = db.Column(db.Text())
+    private_key = db.Column(db.Text())
+    in_use = db.Column(db.Boolean())
+    container_id = db.Column(db.String(64))
+    last_used = db.Column(db.DateTime())
 
     ##################################################
     # INSTANCE METHODS
     ##################################################
 
     def __repr__(self):
-        return "<License %r>" % (self.name)
+        return "<License %r>" % (self.id)
 
     def create(self):
         """
@@ -94,12 +330,12 @@ class License(db.Model):
         """ Serializes a License into a dictionary """
         return {
             "id": self.id,
-            "username": self.username,
-            "used_by": self.used_by,
-            "private_key_path": self.private_key_path,
-            "public_key_path": self.public_key_path,
-            "is_available": self.is_available,
-            "last_issued": self.last_issued,
+            "uname": self.uname,
+            "public_key": self.public_key,
+            "private_key": self.private_key,
+            "in_use": self.in_use,
+            "container_id": self.container_id,
+            "last_used": self.last_used,
         }
 
     def deserialize(self, data: dict):
@@ -114,12 +350,12 @@ class License(db.Model):
 
         """
         try:
-            self.username = data["username"]
-            self.used_by = data["used_by"]
-            self.private_key_path = data["private_key_path"]
-            self.public_key_path = data["public_key_path"]
-            self.is_available = data["is_available"]
-            self.last_issued = data["last_issued"]
+            self.uname = data["uname"]
+            self.public_key = data["public_key"]
+            self.private_key = data["private_key"]
+            self.in_use = data["in_use"]
+            self.container_id = data["container_id"]
+            self.last_used = data["last_used"]
         except KeyError as error:
             raise DataValidationError("Invalid License: missing " + error.args[0])
         except TypeError as error:
