@@ -234,7 +234,7 @@ def init_db():
     """ Initializes the SQLAlchemy app """
     global app
     License.init_db(app)
-    migrations.getMigrations()
+    migrations.runMigrations()
 
 
 
