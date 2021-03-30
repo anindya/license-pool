@@ -56,7 +56,7 @@ class User(db.Model):
     """
     Class that represents a User
     """
-
+    __tablename__ = 'users'
     logger = logging.getLogger(__name__)
     app = None
 
@@ -72,6 +72,9 @@ class User(db.Model):
     ##################################################
     # INSTANCE METHODS
     ##################################################
+    # def __init__(self, uname, password):
+    #     self.uname = uname
+    #     self.password = password
 
     def __repr__(self):
         return "<User %r>" % (self.id)
@@ -116,6 +119,7 @@ class User(db.Model):
 
         """
         try:
+            self.logger.debug(data)
             self.uname = data["uname"]
             self.password = data["password"]
         except KeyError as error:
@@ -174,7 +178,7 @@ class License_Permit(db.Model):
     """
     Class that represents a License_Permit
     """
-
+    __tablename__ = "license_permits"
     logger = logging.getLogger(__name__)
     app = None
 
@@ -182,7 +186,7 @@ class License_Permit(db.Model):
     # Table Schema
     ##################################################
     id = db.Column(db.Integer, primary_key=True)
-    uname = db.Column(db.String(64))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     max_licenses = db.Column(db.Integer)
     in_use = db.Column(db.Integer)
 
@@ -217,7 +221,7 @@ class License_Permit(db.Model):
         """ Serializes a License_Permit into a dictionary """
         return {
             "id": self.id,
-            "uname": self.uname,
+            "user_id": self.user_id,
             "max_licenses": self.max_licenses,
             "in_use": self.in_use,
         }
@@ -234,7 +238,7 @@ class License_Permit(db.Model):
 
         """
         try:
-            self.uname = data["uname"]
+            self.user_id = data["user_id"]
             self.max_licenses = data["max_licenses"]
             self.in_use = data["in_use"]
         except KeyError as error:
@@ -291,7 +295,7 @@ class License(db.Model):
     This version uses a relational database for persistence which is hidden
     from us by SQLAlchemy's object relational mappings (ORM)
     """
-
+    __tablename__ = "licenses"
     logger = logging.getLogger(__name__)
     app = None
 
@@ -299,7 +303,7 @@ class License(db.Model):
     # Table Schema
     ##################################################
     id = db.Column(db.Integer, unique=True)
-    uname = db.Column(db.String(64), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     public_key = db.Column(db.Text(), primary_key=True)
     private_key = db.Column(db.Text())
     in_use = db.Column(db.Boolean(), index=True)
@@ -337,7 +341,7 @@ class License(db.Model):
         """ Serializes a License into a dictionary """
         return {
             "id": self.id,
-            "uname": self.uname,
+            "user_id": self.user_id,
             "public_key": self.public_key,
             "private_key": self.private_key,
             "in_use": self.in_use,
@@ -357,7 +361,7 @@ class License(db.Model):
 
         """
         try:
-            self.uname = data["uname"]
+            self.user_id = data["user_id"]
             self.public_key = data["public_key"]
             self.private_key = data["private_key"]
             self.in_use = data["in_use"]
@@ -388,6 +392,7 @@ class License(db.Model):
         # This is where we initialize SQLAlchemy from the Flask app
         db.init_app(app)
         app.app_context().push()
+        db.drop_all()
         db.create_all()  # make our sqlalchemy tables
 
     @classmethod
