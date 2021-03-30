@@ -16,6 +16,7 @@ Authorizing Service
 import os
 import sys
 import logging
+import datetime
 from flask import Flask, jsonify, request, url_for, make_response, abort
 from flask_api import status  # HTTP Status Codes
 from werkzeug.exceptions import NotFound
@@ -23,10 +24,11 @@ from werkzeug.exceptions import NotFound
 # For this example we'll use SQLAlchemy, a popular ORM that supports a
 # variety of backends including SQLite, MySQL, and PostgreSQL
 from flask_sqlalchemy import SQLAlchemy
-from .models import License, DataValidationError
+from .models import User, License_Permit, License, DataValidationError
 
 # Import Flask application
 from . import app
+
 
 ######################################################################
 # Error Handlers
@@ -212,6 +214,46 @@ def create_licenses():
     return make_response(
         jsonify(message), status.HTTP_201_CREATED, {"Location": location_url}
     )
+
+
+######################################################################
+# ASSIGN a License
+######################################################################
+@app.route("/license/request", methods=['POST'])
+def assign_license():
+    app.logger.info('Received a licence request')
+    check_content_type("application/json")
+    req = request.get_json()
+    user = User.find_by_uname(req['username'])
+    if user is None:
+        response = {'message': 'user not found'}
+        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+    if user.password != req['password']:
+        response = {'message': 'password not match'}
+        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+    permit = user.permit
+    licenses = user.licenses
+    if len(licenses) < permit.max_licenses:
+        # create a new key pair
+        pubkey, priv_key = 'a', 'b'  # fixme
+        # create a new license
+        license = License(
+            uname=user.uname,
+            public_key=pubkey,
+            private_key=priv_key,
+            in_use=True,
+            container_id=req['container_id'],
+            last_used=datetime.datetime.now()
+        )
+        license.create()
+        # success, respond to user
+        response = {'status': 200,
+                    'public_key': pubkey,
+                    'message': "OK"}
+        return make_response(jsonify(response), status.HTTP_200_OK)
+    else:
+        response = {'message': 'Max Limit Reached. Please revoke licence before proceeding.'}
+        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
 
 
 # ######################################################################
