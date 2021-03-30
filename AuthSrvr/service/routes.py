@@ -224,47 +224,22 @@ def assign_license():
         response = {'message': 'password not match'}
         return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
     permit = user.permit
-    licenses = user.licenses
-    if len(licenses) < permit.max_licenses:
-        # create a new key pair
-        pubkey, priv_key = 'a', 'b'  # fixme
-        # create a new license
-        license = License(
-            uname=user.uname,
-            public_key=pubkey,
-            private_key=priv_key,
-            in_use=True,
-            container_id=req['container_id'],
-            last_used=datetime.datetime.now()
-        )
-        license.create()
-        # success, respond to user
-        response = {'status': 200,
-                    'public_key': pubkey,
-                    'message': "OK"}
-        return make_response(jsonify(response), status.HTTP_200_OK)
+    if permit.in_use < permit.max_licenses:
+        # search for a license not in use
+        for license in user.licenses:
+            if not license.in_use:
+                license.in_use = True
+                license.update()
+                permit.in_use += 1
+                permit.update()
+                # success, respond to user
+                response = {'status': 200,
+                            'public_key': license.public_key,
+                            'message': "OK"}
+                return make_response(jsonify(response), status.HTTP_200_OK)
     else:
         response = {'message': 'Max Limit Reached. Please revoke licence before proceeding.'}
         return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
-
-
-# ######################################################################
-# # DELETE A PET
-# ######################################################################
-# @app.route("/pets/<int:pet_id>", methods=["DELETE"])
-# def delete_pets(pet_id):
-#     """
-#     Delete a Pet
-
-#     This endpoint will delete a Pet based the id specified in the path
-#     """
-#     app.logger.info("Request to delete pet with id: %s", pet_id)
-#     pet = Pet.find(pet_id)
-#     if pet:
-#         pet.delete()
-
-#     app.logger.info("Pet with ID [%s] delete complete.", pet_id)
-#     return make_response("", status.HTTP_204_NO_CONTENT)
 
 
 ######################################################################
@@ -277,7 +252,6 @@ def init_db():
     global app
     License.init_db(app)
     migrations.runMigrations()
-
 
 
 def check_content_type(content_type):
