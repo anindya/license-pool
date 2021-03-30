@@ -20,6 +20,7 @@ RUN pip install --no-cache-dir -r requirements.txt --user
 # Copy the application contents
 COPY config.py .
 COPY service ./service
+COPY utils ./utils
 
 # Expose any ports the app is expecting in the environment
 ENV PORT 5000
@@ -27,7 +28,7 @@ EXPOSE $PORT
 
 ENV GUNICORN_BIND 0.0.0.0:$PORT
 ENTRYPOINT ["gunicorn"]
-CMD ["--log-level=info", "service:app"]
+CMD ["--log-level=debug", "service:app"]
 
 # ENV GUNICORN_BIND 0.0.0.0:$PORT
 # CMD ["gunicorn", "--log-level=info", "service:app"]
