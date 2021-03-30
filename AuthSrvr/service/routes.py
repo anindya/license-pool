@@ -3,14 +3,6 @@
 
 """
 Authorizing Service
-
-# Paths:
-# ------
-# GET /pets - Returns a list all of the Pets
-# GET /pets/{id} - Returns the Pet with a given id number
-# POST /pets - creates a new Pet record in the database
-# PUT /pets/{id} - updates a Pet record in the database
-# DELETE /pets/{id} - deletes a Pet record in the database
 """
 
 import os
@@ -24,7 +16,7 @@ from werkzeug.exceptions import NotFound
 # variety of backends including SQLite, MySQL, and PostgreSQL
 from flask_sqlalchemy import SQLAlchemy
 from .models import License, DataValidationError
-
+from utils import migrations
 # Import Flask application
 from . import app
 
@@ -242,6 +234,8 @@ def init_db():
     """ Initializes the SQLAlchemy app """
     global app
     License.init_db(app)
+    migrations.runMigrations()
+
 
 
 def check_content_type(content_type):
