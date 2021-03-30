@@ -51,6 +51,7 @@ class DataValidationError(Exception):
 
     pass
 
+
 class User(db.Model):
     """
     Class that represents a User
@@ -63,8 +64,10 @@ class User(db.Model):
     # Table Schema
     ##################################################
     id = db.Column(db.Integer, primary_key=True)
-    uname = db.Column(db.String(64)) #TODO: need to confirm the data type
-    password = db.Column(db.String(128)) #TODO: need to confirm the data type
+    uname = db.Column(db.String(64), unique=True, index=True)  # TODO: need to confirm the data type
+    password = db.Column(db.String(128))  # TODO: need to confirm the data type
+    permit = db.relationship('License_Permit', backref='user', uselist=False)
+    licenses = db.relationship('License', backref='user')
 
     ##################################################
     # INSTANCE METHODS
@@ -148,6 +151,11 @@ class User(db.Model):
         return cls.query.get(user_id)
 
     @classmethod
+    def find_by_uname(cls, uname):
+        cls.logger.info(f"Processing lookup for uname {uname} ...")
+        return cls.query.filter_by(uname=uname).first()
+
+    @classmethod
     def find_or_404(cls, user_id: int):
         """Find a User by it's id
 
@@ -160,7 +168,6 @@ class User(db.Model):
         """
         cls.logger.info("Processing lookup or 404 for id %s ...", user_id)
         return cls.query.get_or_404(user_id)
-
 
 
 class License_Permit(db.Model):
