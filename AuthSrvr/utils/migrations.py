@@ -1,7 +1,6 @@
 from service import models
-from utils import constants
+from utils import constants, RSA_helper
 
-from Crypto.PublicKey import RSA
 import random
 import logging
 
@@ -19,13 +18,12 @@ def runMigrations():
         })
         licensePermits.create()
         for i in range(num_licenses):
-            key = RSA.generate(2048)
-            publicKey = key.publickey()
+            publicKey,  privateKey = RSA_helper.generateKeyPairs(userObj)
             license = models.License();
             license.deserialize({
                 "user_id" : userObj.id,
-                "public_key" : publicKey.export_key('PEM'),
-                "private_key" : key.export_key('PEM', passphrase=userObj.password),
+                "public_key" : publicKey,
+                "private_key" : privateKey,
                 "in_use" : False,
                 "container_id" : None,
                 "last_used" : None
