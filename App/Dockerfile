@@ -13,7 +13,16 @@ USER worker
 ENV HOME /app
 ENV PATH="/app/.local/bin:${PATH}"
 
+# install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt --user
+
+# set user
+ENV USER Emma
+ENV USER_PASS abcd
+
 RUN pip install Flask
+
 
 # Copy the application contents
 COPY . .
