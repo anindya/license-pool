@@ -1,5 +1,6 @@
 from flask import Flask, request, abort
 from flask_apscheduler import APScheduler
+from requests.adapters import HTTPAdapter
 
 import os
 import requests
@@ -11,7 +12,8 @@ from .utils import RSAHelper, StringUtils
 
 auth_server_url = "10.0.0.5"
 auth_server_port = 5000
-
+PING_FREQUENCY_SECONDS = 10
+MAX_RETRIES = 5
 class License:
     #TODO Change print to logging.
 
@@ -21,8 +23,10 @@ class License:
         self.apsched = APScheduler()
         self.apsched.start()
 
-    def initializePing(self):    
-        self.apsched.add_job(func=self.pingAuthServer, seconds=10, id=self.jobId, trigger='interval')
+    def initializePing(self):  
+        s = requests.Session()
+        s.mount(f"http://{auth_server_url}", HTTPAdapter(max_retries=MAX_RETRIES))  
+        self.apsched.add_job(func=self.pingAuthServer, seconds=PING_FREQUENCY_SECONDS, id=self.jobId, trigger='interval')
 
     def pingAuthServer(self):
         if self.public_key == None:
@@ -40,7 +44,7 @@ class License:
                                     'container_id': cid,
                                     'secret': RSAHelper.encryptMessage(secretMessage, self.public_key).decode()
                                 })
-            if res.status_code != 200:
+            if res is None or res.status_code != 200:
                 self.apsched.remove_job(self.jobId)
         except requests.exceptions.RequestException as e:
             print(e)

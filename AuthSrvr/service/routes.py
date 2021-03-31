@@ -8,7 +8,7 @@ Authorizing Service
 import os
 import sys
 import logging
-import datetime
+from datetime import datetime
 from flask import Flask, jsonify, request, url_for, make_response, abort
 from flask_api import status  # HTTP Status Codes
 from werkzeug.exceptions import NotFound
@@ -210,6 +210,7 @@ def create_licenses():
 ######################################################################
 # ASSIGN a License
 ######################################################################
+#TODO Use authentication function for getting user and remove redundant code.
 @app.route("/license/request", methods=['POST'])
 def assign_license():
     app.logger.info('Received a licence request')
@@ -235,6 +236,7 @@ def assign_license():
         app.logger.info(f'Investigating license {lic}')
         if not lic.in_use:
             lic.in_use = True
+            lic.container_id = req['container_id']
             lic.update()
             permit.in_use += 1
             permit.update()
@@ -261,34 +263,22 @@ def handle_ping():
     check_content_type("application/json")
     req = request.get_json()
     authenticationStatus = authenticate(req)
-    if authenticationStatus.status != 200:
-        return authenticationStatus
+    if authenticationStatus["status"] != 200:
+        response = {"message" :authenticationStatus["message"]}
+        return make_response(jsonify(response), authenticationStatus["status"])
     app.logger.info(req)
-    return make_response(status.HTTP_200_OK)
-    # permit = License_Permit.find_by_uid(user.id)
-    # if permit is None:
-    #     response = {'message': 'permit not found'}
-    #     return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
-    # app.logger.info(f'found permit {permit}')
-    # if permit.in_use < permit.max_licenses:
-    #     # search for a license not in use
-    #     lic = License.find_free_by_uid(user.id)
-    #     app.logger.info(f'Investigating license {lic}')
-    #     if not lic.in_use:
-    #         lic.in_use = True
-    #         lic.update()
-    #         permit.in_use += 1
-    #         permit.update()
-    #         # success, respond to user
-    #         response = {'status': 200,
-    #                     'public_key': lic.public_key,
-    #                     'message': "OK"}
-    #         return make_response(jsonify(response), status.HTTP_200_OK)
-    # else:
-    #     response = {'message': 'Max Limit Reached. Please revoke licence before proceeding.'}
-    #     return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
-    # )
+    user = authenticationStatus["user"]
+    licenseData = License.find_by_uid_container_id(user.id, req["container_id"])
+    if licenseData is None:
+        app.logger.info(f"Could not find license for user : {user.id} and container id : {req['container_id']}")
+        response = {"message" : "License not found for container."}
+        return make_response(jsonify(response), status.HTTP_404_NOT_FOUND)
+    app.logger.info(f"Ping received for User : {user.id}, license id : {licenseData}")
 
+    licenseData.last_used = datetime.now()
+    licenseData.update()
+    response = {"message" : "Verified"}
+    return make_response(jsonify(response), status.HTTP_200_OK)
 
 ######################################################################
 #  U T I L I T Y   F U N C T I O N S
@@ -296,15 +286,12 @@ def handle_ping():
 def authenticate(req):
     user = User.find_by_uname(req['username'])
     if user is None:
-        response = {'message': 'user not found'}
-        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+        return {'message': 'user not found', 'status' : status.HTTP_404_NOT_FOUND}    
     app.logger.info(f'User with uname {req["username"]} found')
     app.logger.info(f'User id: {user.id}')
     if user.password != req['password']:
-        response = {'message': 'password not match'}
-        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
-    response = {'message': 'user authenticated'}
-    return make_response(jsonify(response), status.HTTP_200_OK)
+        return {'message': 'incorrect passoword', 'status' : status.HTTP_403_FORBIDDEN}
+    return {'message': 'user authenticated', 'user' : user, 'status' : status.HTTP_200_OK}
 
 def init_db():
     """ Initializes the SQLAlchemy app """
