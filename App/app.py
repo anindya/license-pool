@@ -30,4 +30,5 @@ def fib(n):
     return answer
     
 if __name__ == "__main__":
+    # TODO call server for getting license
     app.run(host=hostIP, port=serverPort)
