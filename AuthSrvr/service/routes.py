@@ -8,6 +8,7 @@ Authorizing Service
 import os
 import sys
 import logging
+import datetime
 from flask import Flask, jsonify, request, url_for, make_response, abort
 from flask_api import status  # HTTP Status Codes
 from werkzeug.exceptions import NotFound
@@ -15,10 +16,11 @@ from werkzeug.exceptions import NotFound
 # For this example we'll use SQLAlchemy, a popular ORM that supports a
 # variety of backends including SQLite, MySQL, and PostgreSQL
 from flask_sqlalchemy import SQLAlchemy
-from .models import License, DataValidationError
+from .models import User, License_Permit, License, DataValidationError
 from utils import migrations
 # Import Flask application
 from . import app
+
 
 ######################################################################
 # Error Handlers
@@ -206,23 +208,47 @@ def create_licenses():
     )
 
 
-# ######################################################################
-# # DELETE A PET
-# ######################################################################
-# @app.route("/pets/<int:pet_id>", methods=["DELETE"])
-# def delete_pets(pet_id):
-#     """
-#     Delete a Pet
-
-#     This endpoint will delete a Pet based the id specified in the path
-#     """
-#     app.logger.info("Request to delete pet with id: %s", pet_id)
-#     pet = Pet.find(pet_id)
-#     if pet:
-#         pet.delete()
-
-#     app.logger.info("Pet with ID [%s] delete complete.", pet_id)
-#     return make_response("", status.HTTP_204_NO_CONTENT)
+######################################################################
+# ASSIGN a License
+######################################################################
+@app.route("/license/request", methods=['POST'])
+def assign_license():
+    app.logger.info('Received a licence request')
+    check_content_type("application/json")
+    req = request.get_json()
+    user = User.find_by_uname(req['username'])
+    if user is None:
+        response = {'message': 'user not found'}
+        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+    app.logger.info(f'User with uname {req["username"]} found')
+    app.logger.info(f'User id: {user.id}')
+    if user.password != req['password']:
+        response = {'message': 'password not match'}
+        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+    permit = License_Permit.find_by_uid(user.id)
+    if permit is None:
+        response = {'message': 'permit not found'}
+        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+    app.logger.info(f'found permit {permit}')
+    if permit.in_use < permit.max_licenses:
+        # search for a license not in use
+        licenses = License.find_by_uid(user.id)
+        app.logger.info(f'found {len(licenses)} licenses')
+        for lic in licenses:
+            app.logger.info(f'Investigating license {lic}')
+            if not lic.in_use:
+                lic.in_use = True
+                lic.update()
+                permit.in_use += 1
+                permit.update()
+                # success, respond to user
+                response = {'status': 200,
+                            'public_key': lic.public_key,
+                            'message': "OK"}
+                return make_response(jsonify(response), status.HTTP_200_OK)
+    else:
+        response = {'message': 'Max Limit Reached. Please revoke licence before proceeding.'}
+        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
 
 
 ######################################################################
@@ -235,7 +261,6 @@ def init_db():
     global app
     License.init_db(app)
     migrations.runMigrations()
-
 
 
 def check_content_type(content_type):

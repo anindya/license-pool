@@ -43,8 +43,8 @@ Vagrant.configure(2) do |config|
   ############################################################
   config.vm.provider "virtualbox" do |vb|
     # Customize the amount of memory on the VM:
-    vb.memory = "2048"
-    vb.cpus = 2
+    vb.memory = "512"
+    vb.cpus = 1
 
     # Fixes some DNS issues on some networks
     vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
@@ -82,7 +82,7 @@ Vagrant.configure(2) do |config|
     # sudo -H -u vagrant sh -c '. ~/venv/bin/activate && pip install -U pip && pip install wheel && cd /vagrant && pip install -r requirements.txt'
 
     # Install app dependencies
-    cd /vagrant
+    cd /vagrant/AuthSrvr
     pip3 install -r requirements.txt
 
   SHELL

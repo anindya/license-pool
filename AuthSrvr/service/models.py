@@ -51,6 +51,7 @@ class DataValidationError(Exception):
 
     pass
 
+
 class User(db.Model):
     """
     Class that represents a User
@@ -63,8 +64,10 @@ class User(db.Model):
     # Table Schema
     ##################################################
     id = db.Column(db.Integer, primary_key=True)
-    uname = db.Column(db.String(64), unique=True) #TODO: need to confirm the data type
-    password = db.Column(db.String(128)) #TODO: need to confirm the data type
+    uname = db.Column(db.String(64), unique=True, index=True)  # TODO: need to confirm the data type
+    password = db.Column(db.String(128))  # TODO: need to confirm the data type
+    permit = db.relationship('License_Permit', backref='user', uselist=False)
+    licenses = db.relationship('License', backref='user')
 
     ##################################################
     # INSTANCE METHODS
@@ -152,6 +155,11 @@ class User(db.Model):
         return cls.query.get(user_id)
 
     @classmethod
+    def find_by_uname(cls, uname):
+        cls.logger.info(f"Processing lookup for uname {uname} ...")
+        return cls.query.filter_by(uname=uname).first()
+
+    @classmethod
     def find_or_404(cls, user_id: int):
         """Find a User by it's id
 
@@ -164,7 +172,6 @@ class User(db.Model):
         """
         cls.logger.info("Processing lookup or 404 for id %s ...", user_id)
         return cls.query.get_or_404(user_id)
-
 
 
 class License_Permit(db.Model):
@@ -267,6 +274,10 @@ class License_Permit(db.Model):
         return cls.query.get(license_permit_id)
 
     @classmethod
+    def find_by_uid(cls, uid):
+        return cls.query.filter_by(user_id=uid).first()
+
+    @classmethod
     def find_or_404(cls, license_permit_id: int):
         """Find a License_Permit by it's id
 
@@ -302,7 +313,6 @@ class License(db.Model):
     in_use = db.Column(db.Boolean(), index=True)
     container_id = db.Column(db.String(64))
     last_used = db.Column(db.DateTime())
-    
 
     ##################################################
     # INSTANCE METHODS
@@ -408,6 +418,10 @@ class License(db.Model):
         """
         cls.logger.info("Processing lookup for id %s ...", license_id)
         return cls.query.get(license_id)
+
+    @classmethod
+    def find_by_uid(cls, uid):
+        return cls.query.filter_by(user_id=uid).all()
 
     @classmethod
     def find_or_404(cls, license_id: int):
