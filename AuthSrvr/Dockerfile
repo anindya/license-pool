@@ -15,7 +15,7 @@ ENV PATH="/app/.local/bin:${PATH}"
 
 # install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt --user
+RUN pip3 install --no-cache-dir -r requirements.txt --user
 
 # Copy the application contents
 COPY config.py .

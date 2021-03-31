@@ -9,7 +9,7 @@ serverPort = 9090
 
 app = Flask(__name__)
 #app.debug = True
-
+licenseObj = license.License()
 
 @app.route("/")
 def hello():
@@ -18,8 +18,8 @@ def hello():
 @app.route("/fibonacci", methods = ['GET'])
 def fibonacci():
     try:
-        if not license.is_valid():
-            _, status = license.get_license()
+        if not licenseObj.is_valid():
+            _, status = licenseObj.getLicense()
             if status != 200:
                 raise Exception(403)
         print("Got a request: ", request.args.get("number"))
@@ -38,7 +38,7 @@ def fib(n):
     return answer
     
 if __name__ == "__main__":
-    _, status = license.get_license()
+    _, status = licenseObj.getLicense()
     if status != 200:
         abort(status)
     

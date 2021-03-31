@@ -207,7 +207,6 @@ def create_licenses():
         jsonify(message), status.HTTP_201_CREATED, {"Location": location_url}
     )
 
-
 ######################################################################
 # ASSIGN a License
 ######################################################################
@@ -250,9 +249,62 @@ def assign_license():
 
 
 ######################################################################
+# Handle container ping
+######################################################################
+@app.route("/container/ping", methods=["POST"])
+def handle_ping():
+    """
+    Takes a ping from a container, finds corresponding user and deciphers the secret messages.
+    Returns funny_message and timestamp from ping.
+    """
+    app.logger.info('Received a ping')
+    check_content_type("application/json")
+    req = request.get_json()
+    authenticationStatus = authenticate(req)
+    if authenticationStatus.status != 200:
+        return authenticationStatus
+    app.logger.info(req)
+    return make_response(status.HTTP_200_OK)
+    # permit = License_Permit.find_by_uid(user.id)
+    # if permit is None:
+    #     response = {'message': 'permit not found'}
+    #     return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+    # app.logger.info(f'found permit {permit}')
+    # if permit.in_use < permit.max_licenses:
+    #     # search for a license not in use
+    #     lic = License.find_free_by_uid(user.id)
+    #     app.logger.info(f'Investigating license {lic}')
+    #     if not lic.in_use:
+    #         lic.in_use = True
+    #         lic.update()
+    #         permit.in_use += 1
+    #         permit.update()
+    #         # success, respond to user
+    #         response = {'status': 200,
+    #                     'public_key': lic.public_key,
+    #                     'message': "OK"}
+    #         return make_response(jsonify(response), status.HTTP_200_OK)
+    # else:
+    #     response = {'message': 'Max Limit Reached. Please revoke licence before proceeding.'}
+    #     return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+    # )
+
+
+######################################################################
 #  U T I L I T Y   F U N C T I O N S
 ######################################################################
-
+def authenticate(req):
+    user = User.find_by_uname(req['username'])
+    if user is None:
+        response = {'message': 'user not found'}
+        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+    app.logger.info(f'User with uname {req["username"]} found')
+    app.logger.info(f'User id: {user.id}')
+    if user.password != req['password']:
+        response = {'message': 'password not match'}
+        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+    response = {'message': 'user authenticated'}
+    return make_response(jsonify(response), status.HTTP_200_OK)
 
 def init_db():
     """ Initializes the SQLAlchemy app """
