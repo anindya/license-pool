@@ -306,9 +306,9 @@ class License(db.Model):
     ##################################################
     # Table Schema
     ##################################################
-    id = db.Column(db.Integer, unique=True)
+    id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    public_key = db.Column(db.Text(), primary_key=True)
+    public_key = db.Column(db.Text(), index=True)
     private_key = db.Column(db.Text())
     in_use = db.Column(db.Boolean(), index=True)
     container_id = db.Column(db.String(64))
