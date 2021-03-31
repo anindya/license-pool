@@ -274,6 +274,10 @@ class License_Permit(db.Model):
         return cls.query.get(license_permit_id)
 
     @classmethod
+    def find_by_uid(cls, uid):
+        return cls.query.filter_by(user_id=uid).first()
+
+    @classmethod
     def find_or_404(cls, license_permit_id: int):
         """Find a License_Permit by it's id
 
@@ -414,6 +418,10 @@ class License(db.Model):
         """
         cls.logger.info("Processing lookup for id %s ...", license_id)
         return cls.query.get(license_id)
+
+    @classmethod
+    def find_by_uid(cls, uid):
+        return cls.query.filter_by(user_id=uid).all()
 
     @classmethod
     def find_or_404(cls, license_id: int):

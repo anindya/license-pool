@@ -220,21 +220,30 @@ def assign_license():
     if user is None:
         response = {'message': 'user not found'}
         return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+    app.logger.info(f'User with uname {req["username"]} found')
+    app.logger.info(f'User id: {user.id}')
     if user.password != req['password']:
         response = {'message': 'password not match'}
         return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
-    permit = user.permit
+    permit = License_Permit.find_by_uid(user.id)
+    if permit is None:
+        response = {'message': 'permit not found'}
+        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+    app.logger.info(f'found permit {permit}')
     if permit.in_use < permit.max_licenses:
         # search for a license not in use
-        for license in user.licenses:
-            if not license.in_use:
-                license.in_use = True
-                license.update()
+        licenses = License.find_by_uid(user.id)
+        app.logger.info(f'found {len(licenses)} licenses')
+        for lic in licenses:
+            app.logger.info(f'Investigating license {lic}')
+            if not lic.in_use:
+                lic.in_use = True
+                lic.update()
                 permit.in_use += 1
                 permit.update()
                 # success, respond to user
                 response = {'status': 200,
-                            'public_key': license.public_key,
+                            'public_key': lic.public_key,
                             'message': "OK"}
                 return make_response(jsonify(response), status.HTTP_200_OK)
     else:
