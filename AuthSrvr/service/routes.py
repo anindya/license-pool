@@ -211,6 +211,9 @@ def create_licenses():
 ######################################################################
 # ASSIGN a License
 ######################################################################
+threshold = datetime.timedelta(seconds=10)
+
+
 @app.route("/license/request", methods=['POST'])
 def assign_license():
     app.logger.info('Received a licence request')
@@ -225,25 +228,26 @@ def assign_license():
     if user.password != req['password']:
         response = {'message': 'password not match'}
         return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
-    permit = License_Permit.find_by_uid(user.id)
-    if permit is None:
-        response = {'message': 'permit not found'}
-        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
-    app.logger.info(f'found permit {permit}')
-    if permit.in_use < permit.max_licenses:
-        # search for a license not in use
-        lic = License.find_free_by_uid(user.id)
-        app.logger.info(f'Investigating license {lic}')
-        if not lic.in_use:
-            lic.in_use = True
-            lic.update()
-            permit.in_use += 1
-            permit.update()
-            # success, respond to user
-            response = {'status': 200,
-                        'public_key': lic.public_key,
-                        'message': "OK"}
-            return make_response(jsonify(response), status.HTTP_200_OK)
+    # permit = License_Permit.find_by_uid(user.id)
+    # if permit is None:
+    #     response = {'message': 'permit not found'}
+    #     return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+    # app.logger.info(f'found permit {permit}')
+    # if permit.in_use < permit.max_licenses:
+    # search for a license not in use
+    lic = License.find_free_by_uid(user.id, threshold)
+    app.logger.info(f'Investigating license {lic}')
+    if lic is not None:
+        lic.in_use = True
+        lic.last_used = datetime.datetime.now()
+        lic.update()
+        # permit.in_use += 1
+        # permit.update()
+        # success, respond to user
+        response = {'status': 200,
+                    'public_key': lic.public_key,
+                    'message': "OK"}
+        return make_response(jsonify(response), status.HTTP_200_OK)
     else:
         response = {'message': 'Max Limit Reached. Please revoke licence before proceeding.'}
         return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)

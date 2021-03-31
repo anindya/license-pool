@@ -40,6 +40,7 @@ License - a license
 """
 
 import logging
+import datetime
 from flask_sqlalchemy import SQLAlchemy
 
 # Create the SQLAlchemy object to be initialized later in init_db()
@@ -424,8 +425,10 @@ class License(db.Model):
         return cls.query.filter_by(user_id=uid).all()
 
     @classmethod
-    def find_free_by_uid(cls, uid):
-        return cls.query.filter_by(user_id=uid, in_use=False).first()
+    def find_free_by_uid(cls, uid, threshold):
+        return cls.query.filter(
+            (cls.user_id == uid) &
+            ((cls.in_use == False) | (cls.last_used < datetime.datetime.now() - threshold))).first()
 
     @classmethod
     def find_or_404(cls, license_id: int):
