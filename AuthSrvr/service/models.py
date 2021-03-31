@@ -424,6 +424,10 @@ class License(db.Model):
         return cls.query.filter_by(user_id=uid).all()
 
     @classmethod
+    def find_free_by_uid(cls, uid):
+        return cls.query.filter_by(user_id=uid, in_use=False).first()
+
+    @classmethod
     def find_or_404(cls, license_id: int):
         """Find a License by it's id
 
