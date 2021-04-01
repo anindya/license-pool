@@ -44,12 +44,20 @@ class License:
                                     'container_id': cid,
                                     'secret': RSAHelper.encryptMessage(secretMessage, self.public_key).decode()
                                 })
+            
             if res is None or res.status_code != 200:
-                self.apsched.remove_job(self.jobId)
+                self.revoke()
+            
+            if res.json()["funny_secret"] != secretMessage["funny_secret"]:
+                self.revoke()
         except requests.exceptions.RequestException as e:
             print(e)
             return "bad_request", 400
-            
+
+    def revoke(self):
+        self.public_key = None
+        print("License has been revoked on this server.")
+        self.apsched.remove_job(self.jobId)
     def getLicense(self):
         try:
             cid = socket.gethostname()

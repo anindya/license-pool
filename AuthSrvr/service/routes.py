@@ -17,10 +17,10 @@ from werkzeug.exceptions import NotFound
 # variety of backends including SQLite, MySQL, and PostgreSQL
 from flask_sqlalchemy import SQLAlchemy
 from .models import User, License_Permit, License, DataValidationError
-from utils import migrations
+from utils import migrations, RSA_helper
 # Import Flask application
 from . import app
-
+import json
 
 ######################################################################
 # Error Handlers
@@ -216,15 +216,13 @@ def assign_license():
     app.logger.info('Received a licence request')
     check_content_type("application/json")
     req = request.get_json()
-    user = User.find_by_uname(req['username'])
-    if user is None:
-        response = {'message': 'user not found'}
-        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
-    app.logger.info(f'User with uname {req["username"]} found')
-    app.logger.info(f'User id: {user.id}')
-    if user.password != req['password']:
-        response = {'message': 'password not match'}
-        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+    app.logger.info(req)
+    authenticationStatus = authenticate(req)
+    if authenticationStatus["status"] != 200:
+        response = {"message" :authenticationStatus["message"]}
+        return make_response(jsonify(response), authenticationStatus["status"])
+    user = authenticationStatus["user"]
+    
     permit = License_Permit.find_by_uid(user.id)
     if permit is None:
         response = {'message': 'permit not found'}
@@ -262,22 +260,26 @@ def handle_ping():
     app.logger.info('Received a ping')
     check_content_type("application/json")
     req = request.get_json()
+    app.logger.info(req)
     authenticationStatus = authenticate(req)
     if authenticationStatus["status"] != 200:
         response = {"message" :authenticationStatus["message"]}
         return make_response(jsonify(response), authenticationStatus["status"])
-    app.logger.info(req)
     user = authenticationStatus["user"]
+
     licenseData = License.find_by_uid_container_id(user.id, req["container_id"])
+    
     if licenseData is None:
         app.logger.info(f"Could not find license for user : {user.id} and container id : {req['container_id']}")
         response = {"message" : "License not found for container."}
         return make_response(jsonify(response), status.HTTP_404_NOT_FOUND)
     app.logger.info(f"Ping received for User : {user.id}, license id : {licenseData}")
 
+    secretDecrypted = RSA_helper.decryptBase64Message(user, req["secret"], licenseData.private_key)
+    app.logger.debug(secretDecrypted)
     licenseData.last_used = datetime.now()
     licenseData.update()
-    response = {"message" : "Verified"}
+    response = {"message" : "Verified", "funny_secret" : json.loads(secretDecrypted)["funny_secret"]}
     return make_response(jsonify(response), status.HTTP_200_OK)
 
 ######################################################################
