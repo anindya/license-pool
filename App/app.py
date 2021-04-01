@@ -54,3 +54,7 @@ if __name__ == "__main__":
         abort(status)
     
     app.run(host=hostIP, port=serverPort)
+
+    _, status = licenseObj.giveupLicense()
+    while status != 200:
+        _, status = licenseObj.giveupLicense()
