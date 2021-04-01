@@ -74,5 +74,24 @@ class License:
             print(e)
             return "bad_request", 400
 
+    def giveupLicense(self):
+        try:
+            cid = socket.gethostname()
+            
+            res = requests.post(f'http://{constants.auth_server_url}:{constants.auth_server_port}/license/giveup',
+                                json={'username': os.getenv("USER"),
+                                    'password': os.getenv("USER_PASS"),
+                                    'container_id': cid,
+                                    'public_key' : self.public_key})
+            print(res.text)
+            if res.status_code == 200:
+                self.revoke()
+                return "ok", 200
+            else:
+                return "Internal Error", 500
+        except requests.exceptions.RequestException as e:
+            print(e)
+            return "bad_request", 400
+
     def is_valid(self):
         return self.public_key != None
