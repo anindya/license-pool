@@ -17,7 +17,7 @@ def runMigrations():
             "in_use" : 0
         })
         licensePermits.create()
-        for i in range(num_licenses):
+        for _ in range(num_licenses):
             publicKey,  privateKey = RSA_helper.generateKeyPairs(userObj)
             license = models.License();
             license.deserialize({
