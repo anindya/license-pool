@@ -28,6 +28,17 @@ def fibonacci():
         return "Forbidden", 403
     return str(fib(n)), 200
 
+@app.route("/revoke", methods = ['GET'])
+def giveupLicense():
+    try:
+        if not licenseObj.is_valid():
+            print("Container has no valid license. exit.")
+            abort(500)
+        licenseObj.giveupLicense()
+    except:
+        return "Internal Server Error", 500
+    return "License Revoked", 200
+
 def fib(n):
     minusTwo = 0
     minusOne = 1
@@ -43,3 +54,7 @@ if __name__ == "__main__":
         abort(status)
     
     app.run(host=hostIP, port=serverPort)
+
+    _, status = licenseObj.giveupLicense()
+    while status != 200:
+        _, status = licenseObj.giveupLicense()

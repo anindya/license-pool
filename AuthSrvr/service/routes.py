@@ -283,6 +283,42 @@ def handle_ping():
     return make_response(jsonify(response), status.HTTP_200_OK)
 
 ######################################################################
+# Revoke a license
+######################################################################
+@app.route("/license/giveup", methods=["POST"])
+def giveup_license():
+    """
+    Revoke a license that is sent by the request.
+    """
+    app.logger.info('Received a revoke license request')
+    check_content_type("application/json")
+    req = request.get_json()
+    app.logger.info(req)
+    authenticationStatus = authenticate(req)
+    if authenticationStatus["status"] != 200:
+        response = {"message" :authenticationStatus["message"]}
+        return make_response(jsonify(response), authenticationStatus["status"])
+    user = authenticationStatus["user"]
+
+    licenseData = License.find_by_uid_container_id(user.id, req["container_id"])
+    
+    if licenseData is None:
+        app.logger.info(f"Could not find license for user : {user.id} and container id : {req['container_id']}")
+        response = {"message" : "License not found for container."}
+        return make_response(jsonify(response), status.HTTP_404_NOT_FOUND)
+
+# TODO Make this a transaction.
+    if licenseData.public_key == req["public_key"]:
+        licenseData.in_use = False
+        permit = License_Permit.find_by_uid(user.id)
+        permit.in_use -= 1
+        licenseData.update()
+        permit.update()   
+
+    response = {"message" : "Revoked"}
+    return make_response(jsonify(response), status.HTTP_200_OK)
+
+######################################################################
 #  U T I L I T Y   F U N C T I O N S
 ######################################################################
 def authenticate(req):
