@@ -8,7 +8,7 @@ Authorizing Service
 import os
 import sys
 import logging
-import datetime
+from datetime import datetime
 from flask import Flask, jsonify, request, url_for, make_response, abort
 from flask_api import status  # HTTP Status Codes
 from werkzeug.exceptions import NotFound
@@ -17,10 +17,10 @@ from werkzeug.exceptions import NotFound
 # variety of backends including SQLite, MySQL, and PostgreSQL
 from flask_sqlalchemy import SQLAlchemy
 from .models import User, License_Permit, License, DataValidationError
-from utils import migrations
+from utils import migrations, RSA_helper
 # Import Flask application
 from . import app
-
+import json
 
 ######################################################################
 # Error Handlers
@@ -207,27 +207,24 @@ def create_licenses():
         jsonify(message), status.HTTP_201_CREATED, {"Location": location_url}
     )
 
-
 ######################################################################
 # ASSIGN a License
 ######################################################################
-threshold = datetime.timedelta(seconds=10)
 
+threshold = datetime.timedelta(seconds=10)
 
 @app.route("/license/request", methods=['POST'])
 def assign_license():
     app.logger.info('Received a licence request')
     check_content_type("application/json")
     req = request.get_json()
-    user = User.find_by_uname(req['username'])
-    if user is None:
-        response = {'message': 'user not found'}
-        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
-    app.logger.info(f'User with uname {req["username"]} found')
-    app.logger.info(f'User id: {user.id}')
-    if user.password != req['password']:
-        response = {'message': 'password not match'}
-        return make_response(jsonify(response), status.HTTP_403_FORBIDDEN)
+
+    app.logger.info(req)
+    authenticationStatus = authenticate(req)
+    if authenticationStatus["status"] != 200:
+        response = {"message" :authenticationStatus["message"]}
+        return make_response(jsonify(response), authenticationStatus["status"])
+    user = authenticationStatus["user"]
     # permit = License_Permit.find_by_uid(user.id)
     # if permit is None:
     #     response = {'message': 'permit not found'}
@@ -254,9 +251,51 @@ def assign_license():
 
 
 ######################################################################
+# Handle container ping
+######################################################################
+@app.route("/container/ping", methods=["POST"])
+def handle_ping():
+    """
+    Takes a ping from a container, finds corresponding user and deciphers the secret messages.
+    Returns funny_message and timestamp from ping.
+    """
+    app.logger.info('Received a ping')
+    check_content_type("application/json")
+    req = request.get_json()
+    app.logger.info(req)
+    authenticationStatus = authenticate(req)
+    if authenticationStatus["status"] != 200:
+        response = {"message" :authenticationStatus["message"]}
+        return make_response(jsonify(response), authenticationStatus["status"])
+    user = authenticationStatus["user"]
+
+    licenseData = License.find_by_uid_container_id(user.id, req["container_id"])
+    
+    if licenseData is None:
+        app.logger.info(f"Could not find license for user : {user.id} and container id : {req['container_id']}")
+        response = {"message" : "License not found for container."}
+        return make_response(jsonify(response), status.HTTP_404_NOT_FOUND)
+    app.logger.info(f"Ping received for User : {user.id}, license id : {licenseData}")
+
+    secretDecrypted = RSA_helper.decryptBase64Message(user, req["secret"], licenseData.private_key)
+    app.logger.debug(secretDecrypted)
+    licenseData.last_used = datetime.now()
+    licenseData.update()
+    response = {"message" : "Verified", "funny_secret" : json.loads(secretDecrypted)["funny_secret"]}
+    return make_response(jsonify(response), status.HTTP_200_OK)
+
+######################################################################
 #  U T I L I T Y   F U N C T I O N S
 ######################################################################
-
+def authenticate(req):
+    user = User.find_by_uname(req['username'])
+    if user is None:
+        return {'message': 'user not found', 'status' : status.HTTP_404_NOT_FOUND}    
+    app.logger.info(f'User with uname {req["username"]} found')
+    app.logger.info(f'User id: {user.id}')
+    if user.password != req['password']:
+        return {'message': 'incorrect passoword', 'status' : status.HTTP_403_FORBIDDEN}
+    return {'message': 'user authenticated', 'user' : user, 'status' : status.HTTP_200_OK}
 
 def init_db():
     """ Initializes the SQLAlchemy app """

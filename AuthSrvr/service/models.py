@@ -431,6 +431,9 @@ class License(db.Model):
             ((cls.in_use == False) | (cls.last_used < datetime.datetime.now() - threshold))).first()
 
     @classmethod
+    def find_by_uid_container_id(cls, user_id, container_id):
+        return cls.query.filter_by(user_id=user_id, container_id=container_id).first()
+    @classmethod
     def find_or_404(cls, license_id: int):
         """Find a License by it's id
 

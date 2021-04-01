@@ -15,13 +15,13 @@ ENV PATH="/app/.local/bin:${PATH}"
 
 # install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt --user
+RUN pip3 install --no-cache-dir -r requirements.txt --user
 
 # set user
 ENV USER Emma
 ENV USER_PASS abcd
 
-RUN pip install Flask
+RUN pip3 install Flask
 
 
 # Copy the application contents
