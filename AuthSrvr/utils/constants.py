@@ -1,4 +1,4 @@
-MAX_LICENSES = 3
+MAX_LICENSES = 10
 DEFAULT_USERS = [
     {
         'uname' : "Emma",

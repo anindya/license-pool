@@ -8,12 +8,8 @@ import socket
 import json
 from datetime import datetime
 
-from .utils import RSAHelper, StringUtils
+from .utils import RSAHelper, StringUtils, constants
 
-auth_server_url = "10.0.0.5"
-auth_server_port = 5000
-PING_FREQUENCY_SECONDS = 10
-MAX_RETRIES = 5
 class License:
     #TODO Change print to logging.
 
@@ -25,8 +21,8 @@ class License:
 
     def initializePing(self):  
         s = requests.Session()
-        s.mount(f"http://{auth_server_url}", HTTPAdapter(max_retries=MAX_RETRIES))  
-        self.apsched.add_job(func=self.pingAuthServer, seconds=PING_FREQUENCY_SECONDS, id=self.jobId, trigger='interval')
+        s.mount(f"http://{constants.auth_server_url}", HTTPAdapter(max_retries=constants.MAX_RETRIES))  
+        self.apsched.add_job(func=self.pingAuthServer, seconds=constants.PING_FREQUENCY_SECONDS, id=self.jobId, trigger='interval')
 
     def pingAuthServer(self):
         if self.public_key == None:
@@ -38,7 +34,7 @@ class License:
                 'timestamp' : datetime.now(),
                 'funny_secret' : StringUtils.getRandomString(23)
             }
-            res = requests.post(f'http://{auth_server_url}:{auth_server_port}/container/ping',
+            res = requests.post(f'http://{constants.auth_server_url}:{constants.auth_server_port}/container/ping',
                                 json={'username': os.getenv("USER"),
                                     'password': os.getenv("USER_PASS"),
                                     'container_id': cid,
@@ -62,7 +58,7 @@ class License:
         try:
             cid = socket.gethostname()
             
-            res = requests.post(f'http://{auth_server_url}:{auth_server_port}/license/request',
+            res = requests.post(f'http://{constants.auth_server_url}:{constants.auth_server_port}/license/request',
                                 json={'username': os.getenv("USER"),
                                     'password': os.getenv("USER_PASS"),
                                     'container_id': cid})
