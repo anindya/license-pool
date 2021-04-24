@@ -68,7 +68,7 @@ docker
     ```sh
     cd /vagrant/App
     docker build -t app:1.0 . 
-    docker run -p 9090:9090 --name app app:1.0
+    docker run --rm -p 9090:9090 --name app app:1.0
     ```
 
 7. Test the endpoints with POSTMAN or curl from your host machine

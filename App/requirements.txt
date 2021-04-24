@@ -1,4 +1,5 @@
 #dependencies
 requests==2.25.1
+Flask
 Flask-APScheduler==1.12.1
 pycryptodome==3.10.1
