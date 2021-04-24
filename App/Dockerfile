@@ -17,12 +17,13 @@ ENV PATH="/app/.local/bin:${PATH}"
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt --user
 
-# set user
-ENV USER Emma
-ENV USER_PASS abcd
-
-
 # Copy the application contents
 COPY . .
+
+# set environment variables for the app
+ENV USER Emma
+ENV USER_PASS abcd
+ENV AUTH_SERVER_URL 172.16.238.1
+ENV AUTH_SERVER_PORT 5000
 
 CMD [ "python", "./app.py" ]

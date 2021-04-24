@@ -1,7 +1,6 @@
-version: "3"
+version: "2.4"
 
 services:
-
   app:
     build: .
     image: authserver:1.0
@@ -34,3 +33,9 @@ volumes:
 
 networks:
   web:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.238.0/24
+          gateway: 172.16.238.1
