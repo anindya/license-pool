@@ -13,11 +13,12 @@ USER worker
 ENV HOME /app
 ENV PATH="/app/.local/bin:${PATH}"
 
-# install the licensing package on TestPyPI
-RUN pip install --no-deps --user -i https://test.pypi.org/simple/ licensing-pkg==0.0.1
 # install dependencies
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir --user -r requirements.txt
+
+# install the licensing package and app package on TestPyPI
+RUN pip install --no-deps --user -i https://test.pypi.org/simple/ licensing-pkg==0.0.1 app-pkg==0.0.1
 
 # Copy the application contents
 COPY . .
@@ -28,4 +29,4 @@ ENV USER_PASS abcd
 ENV AUTH_SERVER_URL 172.16.238.1
 ENV AUTH_SERVER_PORT 5000
 
-CMD [ "python", "./app.py" ]
+CMD [ "python", "./main.py" ]
