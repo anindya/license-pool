@@ -21,7 +21,6 @@ docker
 1. (optional) Spin up and access the VM. (NOTE: when you spin up the VM for the first time, it might not finish all the provisioning process, just provision it again.)
 
     ```sh
-    $ bash App/obfuscate.sh # obfuscate the code
     $ vagrant up
     $ vagrant ssh
 
@@ -98,6 +97,7 @@ docker
     exit
     vagrant halt
     ```
+
 <!-- ## Running the tests
 
 Explain how to run the automated tests for this system
@@ -116,3 +116,13 @@ Add additional notes about how to deploy this on a live system -->
 
 ## Acknowledgments
 - The `Vagrantfile`, `Dockerfile`, `docker-compose.yml`, `config.py` and the `service` directory are based on John J. Rofrano's [nyu-devops/lab-kubernetes](https://github.com/nyu-devops/lab-kubernetes) and [nyu-devops/lab-flask-tdd](https://github.com/nyu-devops/lab-flask-tdd)
+
+## (Optional) How to rebuild obfuscated package
+If you changed code in `App/`, **Inside the vagrant VM**, run
+```sh
+   cd /vagrant
+   pip3 install pyarmor
+   export PATH=$PATH:/home/vagrant/.local/bin
+   bash App/obfuscate.sh
+```
+The new obfuscated package will be in `dist/`.
