@@ -21,6 +21,7 @@ docker
 1. (optional) Spin up and access the VM. (NOTE: when you spin up the VM for the first time, it might not finish all the provisioning process, just provision it again.)
 
     ```sh
+    $ bash App/obfuscate.sh # obfuscate the code
     $ vagrant up
     $ vagrant ssh
 
