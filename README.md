@@ -18,12 +18,16 @@ docker
 
 ### Installing
 
-1. (optional) Spin up and access the VM
+1. (optional) Spin up and access the VM. (NOTE: when you spin up the VM for the first time, it might not finish all the provisioning process, just provision it again.)
 
     ```sh
     $ vagrant up
     $ vagrant ssh
+
+    # provision the VM again if needed.
+    $ vagrant up --provision    
     ```
+    **NOTE: the project root directory is synced with `/vagrant` in the VM**
 
 2. Test docker installation
 
@@ -31,55 +35,47 @@ docker
     docker run hello-world
     ```
 
-3. Go to the project root directory (it's synced with `/vagrant` in the VM)
-
-    ```sh
-    cd /vagrant
-    ```
-
-4. Spin up example Flask app and Postgres database instance with docker-compose
+3. Spin up the Authorizing Server with docker-compose
 
     ```sh
     cd /vagrant/AuthSrvr
     docker-compose up
     ```
 
-5. Test the endpoints with POSTMAN or curl from your host machine
+4. Test the endpoints with POSTMAN or curl from your host machine (NOTE: replace `localhost` with `192.168.33.10` if you're using vagrant VM.)
 
     ```sh
-    # create a new licenses
-    curl -H "Content-Type: application/json" \
-    -X POST \
-    -d '{"username":"tester","used_by":null,"is_available":true,"private_key_path":"keys/private_tester_1.pem","public_key_path":"keys/public_tester_1.pem","last_issued":null}' \
-    http://192.168.33.10:5000/licenses
-
-    # update a licenses
-    curl -H "Content-Type: application/json" \
-    -X POST \
-    -d '{"username":"tester","used_by":"12d8c6885151","is_available":false,"private_key_path":"keys/private_tester_1.pem","public_key_path":"keys/public_tester_1.pem","last_issued":"2021-03-24 04:05:06"}' \
-    http://192.168.33.10:5000/licenses/1
-
     # list all licenses
-    curl -X GET http://192.168.33.10:5000/licenses        
+    curl -X GET http://localhost:5000/licenses        
     ```
 
-6. Build image and spin up the example containerized app (also a Flask server)
+5. Build image and spin up the example containerized app (also a Flask server). When the container is spun up, you should see the license printed out.
 
     ```sh
     cd /vagrant/App
     docker build -t app:1.0 . 
-    docker run -p 9090:9090 --name app app:1.0
+    docker run --rm -p 9090:9090 --name app app:1.0
+
+    # If you successfully get a license:
+    {"message":"OK","public_key":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCpHX+NnnL1++9iynu8iU8b/tBIGfaZafsIzmpvCvB3QVP+sxsoK8gLFGdmiPk4D18kOn/CZ98B9AysOC22kJjBN/w8gOtya+yDgwoMSBlpIbskKhlbz4s5to5yQyFME7UWU9D3wmRtl0pIR1aU3c9YqqL13NXGfS5OJxrvUzJPvKLowQ8cnac5OqQzI82/k3Wl/ZQOLZtHGQcfbX/Fe8UJDWL5SDJ/cxFkzhtwxwfkJw8BoS2T/hVY2LUB/59AmzgGDMTMhsk4A7QMLboqE7LZJ76Znr2GBiP3orjNdVLqN4l9ClW/PSDMDPaRrKCeibbAaDqN4WEuke5Fe+tVpyst","status":200}
     ```
 
-7. Test the endpoints with POSTMAN or curl from your host machine
+6. Test the endpoints with POSTMAN or curl from your host machine. (NOTE: replace `localhost` with `192.168.33.10` if you're using vagrant VM.)
 
     ```sh
     # get the welcome page
-    curl -X GET http://192.168.33.10:9090/
+    curl -X GET http://localhost:9090/
 
     # get a fibonacci number
-    curl -X GET http://192.168.33.10:9090/fibonacci?number=10 
+    curl -X GET http://localhost:9090/fibonacci?number=10 
     ```
+
+7. Stop the App with `ctrl+c` and you should see the log for revoking license:
+
+   ```sh
+   {"message":"Revoked"}
+   License has been revoked on this server.
+   ```
 
 8. Remove the containers and/or images
 

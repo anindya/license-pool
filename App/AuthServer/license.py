@@ -10,6 +10,11 @@ from datetime import datetime
 
 from .utils import RSAHelper, StringUtils, constants
 
+auth_server_url = os.getenv("AUTH_SERVER_URL", "172.16.238.1")
+auth_server_port = os.getenv("AUTH_SERVER_PORT", 5000)
+user = os.getenv("USER")
+user_pass = os.getenv("USER_PASS")
+
 class License:
     #TODO Change print to logging.
 
@@ -21,7 +26,7 @@ class License:
 
     def initializePing(self):  
         s = requests.Session()
-        s.mount(f"http://{constants.auth_server_url}", HTTPAdapter(max_retries=constants.MAX_RETRIES))  
+        s.mount(f"http://{auth_server_url}", HTTPAdapter(max_retries=constants.MAX_RETRIES))  
         self.apsched.add_job(func=self.pingAuthServer, seconds=constants.PING_FREQUENCY_SECONDS, id=self.jobId, trigger='interval')
 
     def pingAuthServer(self):
@@ -34,9 +39,9 @@ class License:
                 'timestamp' : datetime.now(),
                 'funny_secret' : StringUtils.getRandomString(23)
             }
-            res = requests.post(f'http://{constants.auth_server_url}:{constants.auth_server_port}/container/ping',
-                                json={'username': os.getenv("USER"),
-                                    'password': os.getenv("USER_PASS"),
+            res = requests.post(f'http://{auth_server_url}:{auth_server_port}/container/ping',
+                                json={'username': user,
+                                    'password': user_pass,
                                     'container_id': cid,
                                     'secret': RSAHelper.encryptMessage(secretMessage, self.public_key).decode()
                                 })
@@ -58,9 +63,9 @@ class License:
         try:
             cid = socket.gethostname()
             
-            res = requests.post(f'http://{constants.auth_server_url}:{constants.auth_server_port}/license/request',
-                                json={'username': os.getenv("USER"),
-                                    'password': os.getenv("USER_PASS"),
+            res = requests.post(f'http://{auth_server_url}:{auth_server_port}/license/request',
+                                json={'username': user,
+                                    'password': user_pass,
                                     'container_id': cid})
             print(res.text)
             if res.status_code == 200:
@@ -78,9 +83,9 @@ class License:
         try:
             cid = socket.gethostname()
             
-            res = requests.post(f'http://{constants.auth_server_url}:{constants.auth_server_port}/license/giveup',
-                                json={'username': os.getenv("USER"),
-                                    'password': os.getenv("USER_PASS"),
+            res = requests.post(f'http://{auth_server_url}:{auth_server_port}/license/giveup',
+                                json={'username': user,
+                                    'password': user_pass,
                                     'container_id': cid,
                                     'public_key' : self.public_key})
             print(res.text)
