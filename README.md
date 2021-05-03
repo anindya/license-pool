@@ -121,8 +121,6 @@ Add additional notes about how to deploy this on a live system -->
 If you changed code in `App/`, **Inside the vagrant VM**, run
 ```sh
    cd /vagrant
-   pip3 install pyarmor
-   export PATH=$PATH:/home/vagrant/.local/bin
    bash App/obfuscate.sh
 ```
 The new obfuscated package will be in `dist/`.
