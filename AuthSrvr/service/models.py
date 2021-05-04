@@ -41,6 +41,7 @@ License - a license
 
 import logging
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
 # Create the SQLAlchemy object to be initialized later in init_db()
 db = SQLAlchemy()
@@ -325,6 +326,7 @@ class License(db.Model):
         """
         Creates a License to the data store
         """
+        self.last_used = datetime.now()
         db.session.add(self)
         db.session.commit()
 

@@ -275,12 +275,24 @@ def handle_ping():
         return make_response(jsonify(response), status.HTTP_404_NOT_FOUND)
     app.logger.info(f"Ping received for User : {user.id}, license id : {licenseData}")
 
-    secretDecrypted = RSA_helper.decryptBase64Message(user, req["secret"], licenseData.private_key)
+    secretDecrypted = json.loads(RSA_helper.decryptBase64Message(user, req["secret"], licenseData.private_key))
     app.logger.debug(secretDecrypted)
-    licenseData.last_used = datetime.now()
-    licenseData.update()
-    response = {"message" : "Verified", "funny_secret" : json.loads(secretDecrypted)["funny_secret"]}
-    return make_response(jsonify(response), status.HTTP_200_OK)
+    if licenseData.last_used < datetime.strptime(secretDecrypted["timestamp"], '%Y-%m-%d %H:%M:%S.%f'):
+        licenseData.last_used = datetime.now()
+        licenseData.update()
+        secretForContainer = RSA_helper.encryptMessage(secretDecrypted, req["public_key"])
+        response = {"message" : "Verified", "funny_secret" : secretForContainer.decode()}
+        return make_response(jsonify(response), status.HTTP_200_OK)
+    # elif licenseData.last_used + THRESHOLD < secretDecrypted["timestamp"]:
+        # revokeLicense(licenseData)
+        # response = {"message" : "Revoked", "funny_secret" : secretForContainer.decode()}
+        # return make_response(jsonify(response), status.HTTP_204_NO_CONTENT)
+    else :
+        secretForContainer = RSA_helper.encryptMessage(secretDecrypted, req["public_key"])
+        response = {"message" : "Verified", "funny_secret" : secretForContainer.decode()}
+        return make_response(jsonify(response), status.HTTP_200_OK)
+
+    
 
 ######################################################################
 # Revoke a license
@@ -308,16 +320,19 @@ def giveup_license():
         return make_response(jsonify(response), status.HTTP_404_NOT_FOUND)
 
 # TODO Make this a transaction.
+    revokeLicense(licenseData)    
+
+    response = {"message" : "Revoked"}
+    return make_response(jsonify(response), status.HTTP_200_OK)
+
+def revokeLicense(licenseData : License):
     if licenseData.public_key == req["public_key"]:
         licenseData.in_use = False
         permit = License_Permit.find_by_uid(user.id)
         permit.in_use -= 1
         licenseData.update()
-        permit.update()   
-
-    response = {"message" : "Revoked"}
-    return make_response(jsonify(response), status.HTTP_200_OK)
-
+        permit.update()
+        
 ######################################################################
 #  U T I L I T Y   F U N C T I O N S
 ######################################################################

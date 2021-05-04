@@ -9,7 +9,8 @@ def runMigrations():
         userObj = models.User()
         userObj = userObj.deserialize(user)
         userObj.create()
-        num_licenses = random.randint(1, constants.MAX_LICENSES)
+        # num_licenses = random.randint(1, constants.MAX_LICENSES)
+        num_licenses = 5
         licensePermits = models.License_Permit()
         licensePermits.deserialize({
             "user_id" : userObj.id,

@@ -19,6 +19,7 @@ def hello():
 def fibonacci():
     try:
         if not licenseObj.is_valid():
+            # Try getting a new license
             _, status = licenseObj.getLicense()
             if status != 200:
                 raise Exception(403)
@@ -56,5 +57,6 @@ if __name__ == "__main__":
     app.run(host=hostIP, port=serverPort)
 
     _, status = licenseObj.giveupLicense()
-    while status != 200:
-        _, status = licenseObj.giveupLicense()
+    # No need to force this, will be auto removed by server if pings are not received.
+    # while status != 200:
+    #     _, status = licenseObj.giveupLicense()

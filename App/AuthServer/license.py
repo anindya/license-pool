@@ -1,6 +1,7 @@
 from flask import Flask, request, abort
 from flask_apscheduler import APScheduler
 from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
 import os
 import requests
@@ -17,48 +18,75 @@ user_pass = os.getenv("USER_PASS")
 
 class License:
     #TODO Change print to logging.
+    __instance = None
+    @staticmethod
+    def getInstance():
+        if License.__instance == None:
+            License()
 
     def __init__(self):
-        self.public_key = None
-        self.jobId = "ping Job"
-        self.apsched = APScheduler()
-        self.apsched.start()
+        if License.__instance != None:
+            print("Object Already exists")
+            return License.__instance
+        else:
+            self.auth_server_public_key = None
+            self.jobId = "ping Job"
+            self.apsched = APScheduler()
+            self.apsched.start()
+            self.session = requests.Session()
+            self.session.mount(f"http://{auth_server_url}", HTTPAdapter(max_retries=Retry(total=constants.MAX_RETRIES)))  
+            __instance = self
+        # self.job = None
 
-    def initializePing(self):  
-        s = requests.Session()
-        s.mount(f"http://{auth_server_url}", HTTPAdapter(max_retries=constants.MAX_RETRIES))  
+    def initializePing(self): 
         self.apsched.add_job(func=self.pingAuthServer, seconds=constants.PING_FREQUENCY_SECONDS, id=self.jobId, trigger='interval')
 
     def pingAuthServer(self):
-        if self.public_key == None:
+        print("Trying ping")
+        if self.auth_server_public_key == None:
             self.apsched.remove_job(self.jobId)
         try:
             cid = socket.gethostname()
+            rolling_public_key, rolling_private_key = RSAHelper.generateKeyPairs(user_pass)
             secretMessage = {
                 'container_id' : cid,
                 'timestamp' : datetime.now(),
                 'funny_secret' : StringUtils.getRandomString(23)
             }
-            res = requests.post(f'http://{auth_server_url}:{auth_server_port}/container/ping',
+
+            res = self.session.post(f'http://{auth_server_url}:{auth_server_port}/container/ping',
                                 json={'username': user,
                                     'password': user_pass,
                                     'container_id': cid,
-                                    'secret': RSAHelper.encryptMessage(secretMessage, self.public_key).decode()
+                                    'secret': RSAHelper.encryptMessage(secretMessage, self.auth_server_public_key).decode(),
+                                    'public_key': rolling_public_key
                                 })
             
             if res is None or res.status_code != 200:
                 self.revoke()
-            
-            if res.json()["funny_secret"] != secretMessage["funny_secret"]:
+            elif res.status_code == 204:
                 self.revoke()
-        except requests.exceptions.RequestException as e:
+                # Clear any jobs currently running
+                return
+            print(res.status_code)
+            secretReturnedByAuthServer = json.loads(RSAHelper.decryptBase64Message(user_pass, res.json()["funny_secret"], rolling_private_key))
+            print("Ping Succesful")
+            if secretReturnedByAuthServer["funny_secret"] != secretMessage["funny_secret"]:
+                self.revoke()
+        except Exception as e:
             print(e)
-            return "bad_request", 400
+            self.revoke()
+            self.session.close()
+        # except requests.exceptions.Timeout as e:
+        #     print(e)
+        #     self.revoke()
+
 
     def revoke(self):
-        self.public_key = None
+        self.auth_server_public_key = None
         print("License has been revoked on this server.")
         self.apsched.remove_job(self.jobId)
+
     def getLicense(self):
         try:
             cid = socket.gethostname()
@@ -70,7 +98,7 @@ class License:
             print(res.text)
             if res.status_code == 200:
                 content = json.loads(res.text)
-                self.public_key = content['public_key']  # todo: store it somewhere
+                self.auth_server_public_key = content['public_key']  # todo: store it somewhere
                 self.initializePing()
                 return "ok", 200
             else:
@@ -87,7 +115,7 @@ class License:
                                 json={'username': user,
                                     'password': user_pass,
                                     'container_id': cid,
-                                    'public_key' : self.public_key})
+                                    'public_key' : self.auth_server_public_key}, timeout = 5)
             print(res.text)
             if res.status_code == 200:
                 self.revoke()
@@ -99,4 +127,4 @@ class License:
             return "bad_request", 400
 
     def is_valid(self):
-        return self.public_key != None
+        return self.auth_server_public_key != None
