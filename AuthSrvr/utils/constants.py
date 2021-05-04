@@ -13,3 +13,5 @@ DEFAULT_USERS = [
         'password' : "ijkl"
     }
 ]
+#number of seconds after which if no ping for a license, revoke License
+THRESHOLD = 30 

@@ -320,13 +320,13 @@ def giveup_license():
         return make_response(jsonify(response), status.HTTP_404_NOT_FOUND)
 
 # TODO Make this a transaction.
-    revokeLicense(licenseData)    
+    revokeLicense(licenseData, public_key)    
 
     response = {"message" : "Revoked"}
     return make_response(jsonify(response), status.HTTP_200_OK)
 
-def revokeLicense(licenseData : License):
-    if licenseData.public_key == req["public_key"]:
+def revokeLicense(licenseData : License, public_key, user : User):
+    if licenseData.public_key == public_key:
         licenseData.in_use = False
         permit = License_Permit.find_by_uid(user.id)
         permit.in_use -= 1

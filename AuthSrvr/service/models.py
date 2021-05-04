@@ -43,6 +43,8 @@ import logging
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
+
+from utils import constants
 # Create the SQLAlchemy object to be initialized later in init_db()
 db = SQLAlchemy()
 
@@ -336,6 +338,7 @@ class License(db.Model):
         """
         if not self.id:
             raise DataValidationError("Update called with empty ID field")
+        self.last_used = datetime.now()
         db.session.commit()
 
     def delete(self):
@@ -432,6 +435,12 @@ class License(db.Model):
     @classmethod
     def find_by_uid_container_id(cls, user_id, container_id):
         return cls.query.filter_by(user_id=user_id, container_id=container_id).first()
+
+    @classmethod
+    def find_in_use_and_last_pinged_before_threshold(cls):
+        return cls.query.filter(License.in_use==True, License.last_used<=
+            datetime.fromtimestamp(datetime.timestamp(datetime.now()) - constants.THRESHOLD)).all()
+
     @classmethod
     def find_or_404(cls, license_id: int):
         """Find a License by it's id
