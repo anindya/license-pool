@@ -28,4 +28,4 @@ EXPOSE $PORT
 
 ENV GUNICORN_BIND 0.0.0.0:$PORT
 ENTRYPOINT ["gunicorn"]
-CMD ["--log-level=debug", "service:app"]
+CMD ["--log-level=info", "service:app"]
