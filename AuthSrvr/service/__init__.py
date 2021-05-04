@@ -17,7 +17,7 @@ app = Flask(__name__)
 app.config.from_object("config")
 
 # Import the routes After the Flask app is created
-from service import routes, models
+from service import routes, models, RevokeLicenses
 
 # Set up logging for production
 print("Setting up logging for {}...".format(__name__))
@@ -35,5 +35,6 @@ app.logger.info(70 * "*")
 
 # make our sqlalchemy tables
 routes.init_db()
+revokeLicenses = RevokeLicenses.RevokeLicenses()
 
 app.logger.info("Service initialized!")
