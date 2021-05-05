@@ -13,7 +13,7 @@ __pycache__/
 
 # C extensions
 *.so
-!_pytransform.so
+!*/_pytransform.so
 
 # Distribution / packaging
 .Python
