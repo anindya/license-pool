@@ -17,7 +17,7 @@ from werkzeug.exceptions import NotFound
 # variety of backends including SQLite, MySQL, and PostgreSQL
 from flask_sqlalchemy import SQLAlchemy
 from .models import User, License_Permit, License, DataValidationError
-from utils import migrations, RSA_helper
+from utils import migrations, RSA_helper, constants
 # Import Flask application
 from . import app
 import json
@@ -215,7 +215,7 @@ def create_licenses():
 def assign_license():
     app.logger.info('Received a licence request')
     check_content_type("application/json")
-    req = request.get_json()
+    req = json.loads(RSA_helper.decryptBase64MessageWithPassphrase(constants.PRIVATE_KEY_PASSPHRASE, request.get_json()["val"], constants.PRIVATE_KEY))
     app.logger.info(req)
     authenticationStatus = authenticate(req)
     if authenticationStatus["status"] != 200:
@@ -239,9 +239,12 @@ def assign_license():
             permit.in_use += 1
             permit.update()
             # success, respond to user
-            response = {'status': 200,
-                        'public_key': lic.public_key,
-                        'message': "OK"}
+            response = {
+                'status': 200,
+                'public_key': lic.public_key,
+                'message': "OK",
+                'funny_secret' : RSA_helper.encryptMessage(req["funny_secret"], request.get_json()["public_key"]).decode()
+            }
             return make_response(jsonify(response), status.HTTP_200_OK)
     else:
         response = {'message': 'Max Limit Reached. Please revoke licence before proceeding.'}
@@ -304,7 +307,8 @@ def giveup_license():
     """
     app.logger.info('Received a revoke license request')
     check_content_type("application/json")
-    req = request.get_json()
+    # req = request.get_json()
+    req = json.loads(RSA_helper.decryptBase64MessageWithPassphrase(constants.PRIVATE_KEY_PASSPHRASE, request.get_json()["val"], constants.PRIVATE_KEY))
     app.logger.info(req)
     authenticationStatus = authenticate(req)
     if authenticationStatus["status"] != 200:
@@ -320,18 +324,19 @@ def giveup_license():
         return make_response(jsonify(response), status.HTTP_404_NOT_FOUND)
 
 # TODO Make this a transaction.
-    revokeLicense(licenseData, public_key)    
-
+    revokeLicense(licenseData, request.get_json()["public_key"], user)    
+    app.logger.info("LICENSE Revoked")
     response = {"message" : "Revoked"}
+    app.logger.info(make_response(jsonify(response), status.HTTP_200_OK))
     return make_response(jsonify(response), status.HTTP_200_OK)
 
 def revokeLicense(licenseData : License, public_key, user : User):
-    if licenseData.public_key == public_key:
+    if licenseData.public_key == public_key and licenseData.user_id == user.id:
         licenseData.in_use = False
         permit = License_Permit.find_by_uid(user.id)
         permit.in_use -= 1
         licenseData.update()
-        permit.update()
+        permit.update() 
         
 ######################################################################
 #  U T I L I T Y   F U N C T I O N S
