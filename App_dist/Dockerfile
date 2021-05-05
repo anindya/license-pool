@@ -15,10 +15,7 @@ ENV PATH="/app/.local/bin:${PATH}"
 
 # install dependencies
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir --user -r requirements.txt
-
-# install the licensing package and app package on TestPyPI
-RUN pip install --no-deps --user -i https://test.pypi.org/simple/ licensing-pkg-obfusticated==0.1.1 app-pkg==0.0.1
+RUN pip3 install --no-cache-dir -r requirements.txt --user
 
 # Copy the application contents
 COPY . .
@@ -29,4 +26,4 @@ ENV USER_PASS abcd
 ENV AUTH_SERVER_URL 172.16.238.1
 ENV AUTH_SERVER_PORT 5000
 
-CMD [ "python", "./main.py" ]
+CMD [ "python", "./app.py" ]

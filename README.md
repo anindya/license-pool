@@ -52,7 +52,8 @@ docker
 5. Build image and spin up the example containerized app (also a Flask server). When the container is spun up, you should see the license printed out.
 
     ```sh
-    cd /vagrant/App
+    cd /vagrant/dist
+    # If you want to run the unobfuscated code, use cd /vagrant/App
     docker build -t app:1.0 . 
     docker run --rm -p 9090:9090 --name app app:1.0
 
@@ -96,6 +97,7 @@ docker
     exit
     vagrant halt
     ```
+
 <!-- ## Running the tests
 
 Explain how to run the automated tests for this system
@@ -114,3 +116,11 @@ Add additional notes about how to deploy this on a live system -->
 
 ## Acknowledgments
 - The `Vagrantfile`, `Dockerfile`, `docker-compose.yml`, `config.py` and the `service` directory are based on John J. Rofrano's [nyu-devops/lab-kubernetes](https://github.com/nyu-devops/lab-kubernetes) and [nyu-devops/lab-flask-tdd](https://github.com/nyu-devops/lab-flask-tdd)
+
+## (Optional) How to rebuild obfuscated package
+If you changed code in `App/`, **Inside the vagrant VM**, run
+```sh
+   cd /vagrant
+   bash App/obfuscate.sh
+```
+The new obfuscated package will be in `dist/`.

@@ -5,9 +5,10 @@ import logging
 
 from AuthServer import license
 
-hostIP = "0.0.0.0"
-serverPort = 9090
+# initialize license obj
+licenseObj = license.License()
 
+# initialize app obj
 app = Flask(__name__)
 #app.debug = True
 # config logger
@@ -53,15 +54,3 @@ def fib(n):
         minusTwo = minusOne
         minusOne = answer
     return answer
-    
-if __name__ == "__main__":
-    _, status = licenseObj.getLicense()
-    if status != 200:
-        abort(status)
-    
-    app.run(host=hostIP, port=serverPort)
-
-    _, status = licenseObj.giveupLicense()
-    # No need to force this, will be auto removed by server if pings are not received.
-    # while status != 200:
-    #     _, status = licenseObj.giveupLicense()
