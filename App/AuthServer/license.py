@@ -15,6 +15,7 @@ auth_server_url = os.getenv("AUTH_SERVER_URL", "172.16.238.1")
 auth_server_port = os.getenv("AUTH_SERVER_PORT", 5000)
 user = os.getenv("USER")
 user_pass = os.getenv("USER_PASS")
+cid = socket.gethostname()
 
 class License:
     #TODO Change print to logging.
@@ -23,6 +24,7 @@ class License:
     def getInstance():
         if License.__instance == None:
             License()
+        return __instance
 
     def __init__(self):
         if License.__instance != None:
@@ -39,6 +41,7 @@ class License:
         # self.job = None
 
     def initializePing(self): 
+        print("Initialize Ping service.")
         self.apsched.add_job(func=self.pingAuthServer, seconds=constants.PING_FREQUENCY_SECONDS, id=self.jobId, trigger='interval')
 
     def pingAuthServer(self):
@@ -51,13 +54,15 @@ class License:
             secretMessage = {
                 'container_id' : cid,
                 'timestamp' : datetime.now(),
-                'funny_secret' : StringUtils.getRandomString(23)
+                'funny_secret' : StringUtils.getRandomString(23),
+                'username': user,
+                'password': user_pass
             }
+            credentials, _ = self.getCredentials()
 
             res = self.session.post(f'http://{auth_server_url}:{auth_server_port}/container/ping',
-                                json={'username': user,
-                                    'password': user_pass,
-                                    'container_id': cid,
+                                json={
+                                    'val' : credentials,
                                     'secret': RSAHelper.encryptMessage(secretMessage, self.auth_server_public_key).decode(),
                                     'public_key': rolling_public_key
                                 })
@@ -70,13 +75,14 @@ class License:
                 return
             print(res.status_code)
             secretReturnedByAuthServer = json.loads(RSAHelper.decryptBase64Message(user_pass, res.json()["funny_secret"], rolling_private_key))
-            print("Ping Succesful")
             if secretReturnedByAuthServer["funny_secret"] != secretMessage["funny_secret"]:
                 self.revoke()
+            else:
+                print("Ping Succesful")
         except Exception as e:
             print(e)
             self.revoke()
-            self.session.close()
+            # self.session.close() #TODO Remove.
         # except requests.exceptions.Timeout as e:
         #     print(e)
         #     self.revoke()
@@ -90,17 +96,26 @@ class License:
     def getLicense(self):
         try:
             cid = socket.gethostname()
-            
+            rolling_public_key, rolling_private_key = RSAHelper.generateKeyPairs(user_pass)
+            credentials, funny_secret = self.getCredentials()
             res = requests.post(f'http://{auth_server_url}:{auth_server_port}/license/request',
-                                json={'username': user,
-                                    'password': user_pass,
-                                    'container_id': cid})
-            print(res.text)
+                                json={
+                                    "val" : credentials,
+                                    "public_key" : rolling_public_key
+                                })
+            # print(res.text)
             if res.status_code == 200:
                 content = json.loads(res.text)
-                self.auth_server_public_key = content['public_key']  # todo: store it somewhere
-                self.initializePing()
-                return "ok", 200
+                secretReturnedByAuthServer = RSAHelper.decryptBase64Message(user_pass, res.json()["funny_secret"], rolling_private_key).strip('"\'')
+                print(secretReturnedByAuthServer)
+                print(funny_secret)
+                print(content)
+                if funny_secret == secretReturnedByAuthServer:
+                    self.auth_server_public_key = content['public_key']  # todo: store it somewhere
+                    self.initializePing()
+                    return "ok", 200
+                else:
+                    return "forbidden", 403
             else:
                 return "forbidden", 403
         except requests.exceptions.RequestException as e:
@@ -109,22 +124,32 @@ class License:
 
     def giveupLicense(self):
         try:
-            cid = socket.gethostname()
-            
-            res = requests.post(f'http://{auth_server_url}:{auth_server_port}/license/giveup',
-                                json={'username': user,
-                                    'password': user_pass,
-                                    'container_id': cid,
-                                    'public_key' : self.auth_server_public_key}, timeout = 5)
-            print(res.text)
+            credentials, funny_secret = self.getCredentials()
+            res = requests.post(f"http://{auth_server_url}:{auth_server_port}/license/giveup",
+                                json={"val" : credentials,
+                                    "public_key" : self.auth_server_public_key
+                                }, timeout = 5)
+            print(res.json())
             if res.status_code == 200:
+                print(res.text)
                 self.revoke()
                 return "ok", 200
             else:
+                print(res.status_code)
                 return "Internal Error", 500
         except requests.exceptions.RequestException as e:
             print(e)
             return "bad_request", 400
+    
+    def getCredentials(self):
+        
+        jsonVal = {
+            'username': user,
+            'password': user_pass,
+            'container_id': cid,
+            'funny_secret' : StringUtils.getRandomString(23)
+        }
+        return RSAHelper.encryptMessage(jsonVal, constants.SHARED_PUBLIC_KEY).decode(), jsonVal["funny_secret"]
 
     def is_valid(self):
         return self.auth_server_public_key != None

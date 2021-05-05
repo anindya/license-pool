@@ -15,6 +15,12 @@ def decryptMessage(userObj : models.User, message, private_key):
     cipher = PKCS1_OAEP.new(key)
     return cipher.decrypt(message)
 
+def decryptBase64MessageWithPassphrase(passphrase, message, private_key):
+    key = RSA.import_key(private_key, passphrase=passphrase)
+    cipher = PKCS1_OAEP.new(key)
+    message = base64.b64decode(message.encode())
+    return cipher.decrypt(message).decode()
+
 def decryptBase64Message(userObj : models.User, message, private_key):
     return decryptMessage(userObj, base64.b64decode(message.encode()), private_key).decode()
 
