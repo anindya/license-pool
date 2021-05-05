@@ -77,6 +77,9 @@ Vagrant.configure(2) do |config|
     # Check versions to prove that everything is installed
     python3 --version
     # # Create a Python3 Virtual Environment and Activate it in .profile
+    pip3 install -U pip && pip3 install wheel pyarmor
+    echo "export PATH=$PATH:/home/vagrant/.local/bin" >> /home/vagrant/.profile
+    pip3 list
     # sudo -H -u vagrant sh -c 'python3 -m venv ~/venv'
     # sudo -H -u vagrant sh -c 'echo ". ~/venv/bin/activate" >> ~/.profile'
     # sudo -H -u vagrant sh -c '. ~/venv/bin/activate && pip install -U pip && pip install wheel && cd /vagrant && pip install -r requirements.txt'
