@@ -13,9 +13,11 @@ USER worker
 ENV HOME /app
 ENV PATH="/app/.local/bin:${PATH}"
 
+# install the licensing package on TestPyPI
+RUN pip install --no-deps --user -i https://test.pypi.org/simple/ licensing-pkg==0.0.1
 # install dependencies
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt --user
+RUN pip3 install --no-cache-dir --user -r requirements.txt
 
 # Copy the application contents
 COPY . .
