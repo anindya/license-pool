@@ -7,6 +7,7 @@ import os
 import requests
 import socket
 import json
+import logging
 from datetime import datetime
 
 from .utils import RSAHelper, StringUtils, constants
@@ -16,6 +17,11 @@ auth_server_port = os.getenv("AUTH_SERVER_PORT", 5000)
 user = os.getenv("USER")
 user_pass = os.getenv("USER_PASS")
 cid = socket.gethostname()
+
+logging.basicConfig(format='[%(asctime)s] [%(levelname)s] : %(message)s')
+logger = logging.getLogger('apscheduler')
+# logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 class License:
     #TODO Change print to logging.
@@ -28,7 +34,7 @@ class License:
 
     def __init__(self):
         if License.__instance != None:
-            print("Object Already exists")
+            logger.info("License Object Already exists")
             return License.__instance
         else:
             self.auth_server_public_key = None
@@ -41,11 +47,11 @@ class License:
         # self.job = None
 
     def initializePing(self): 
-        print("Initialize Ping service.")
         self.apsched.add_job(func=self.pingAuthServer, seconds=constants.PING_FREQUENCY_SECONDS, id=self.jobId, trigger='interval')
+        logger.info("Ping service initialized.")
 
     def pingAuthServer(self):
-        print("Trying ping")
+        logger.info("Trying ping...")
         if self.auth_server_public_key == None:
             self.apsched.remove_job(self.jobId)
         try:
@@ -65,32 +71,36 @@ class License:
                                     'val' : credentials,
                                     'secret': RSAHelper.encryptMessage(secretMessage, self.auth_server_public_key).decode(),
                                     'public_key': rolling_public_key
-                                })
-            
+                                })            
+            logger.debug('res.status_code={}'.format(res.status_code))
+
             if res is None or res.status_code != 200:
                 self.revoke()
             elif res.status_code == 204:
                 self.revoke()
                 # Clear any jobs currently running
                 return
-            print(res.status_code)
+
             secretReturnedByAuthServer = json.loads(RSAHelper.decryptBase64Message(user_pass, res.json()["funny_secret"], rolling_private_key))
+            logger.debug('secret returned by AuthServer = {}'.format(secretReturnedByAuthServer["funny_secret"]))
+            logger.debug('secret = {}'.format(secretMessage["funny_secret"]))
+
             if secretReturnedByAuthServer["funny_secret"] != secretMessage["funny_secret"]:
+                logger.info("Ping Failed: secret messages don't match.")
                 self.revoke()
             else:
-                print("Ping Succesful")
+                logger.info("Ping Succeeded.")
         except Exception as e:
-            print(e)
+            logger.error(e)
             self.revoke()
             # self.session.close() #TODO Remove.
         # except requests.exceptions.Timeout as e:
         #     print(e)
         #     self.revoke()
 
-
     def revoke(self):
         self.auth_server_public_key = None
-        print("License has been revoked on this server.")
+        logger.info("License has been revoked on this server.")
         self.apsched.remove_job(self.jobId)
 
     def getLicense(self):
@@ -107,9 +117,9 @@ class License:
             if res.status_code == 200:
                 content = json.loads(res.text)
                 secretReturnedByAuthServer = RSAHelper.decryptBase64Message(user_pass, res.json()["funny_secret"], rolling_private_key).strip('"\'')
-                print(secretReturnedByAuthServer)
-                print(funny_secret)
-                print(content)
+                logger.debug('secretReturnedByAuthServer:{}'.format(secretReturnedByAuthServer))
+                logger.debug('funny_secret:{}'.format(funny_secret))
+                logger.debug('content:{}'.format(content))
                 if funny_secret == secretReturnedByAuthServer:
                     self.auth_server_public_key = content['public_key']  # todo: store it somewhere
                     self.initializePing()
@@ -119,7 +129,8 @@ class License:
             else:
                 return "forbidden", 403
         except requests.exceptions.RequestException as e:
-            print(e)
+            logger.info('get license failed.')
+            logger.error(e)
             return "bad_request", 400
 
     def giveupLicense(self):
@@ -129,16 +140,16 @@ class License:
                                 json={"val" : credentials,
                                     "public_key" : self.auth_server_public_key
                                 }, timeout = 5)
-            print(res.json())
+            logger.debug('res.json(): '.format(res.json()))
             if res.status_code == 200:
-                print(res.text)
+                logger.debug('res.text: '.format(res.text))
                 self.revoke()
                 return "ok", 200
             else:
-                print(res.status_code)
+                logger.error(res.status_code)
                 return "Internal Error", 500
         except requests.exceptions.RequestException as e:
-            print(e)
+            logger.error(e)
             return "bad_request", 400
     
     def getCredentials(self):
