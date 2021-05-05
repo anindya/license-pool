@@ -262,7 +262,8 @@ def handle_ping():
     """
     app.logger.info('Received a ping')
     check_content_type("application/json")
-    req = request.get_json()
+    req = json.loads(RSA_helper.decryptBase64MessageWithPassphrase(constants.PRIVATE_KEY_PASSPHRASE, request.get_json()["val"], constants.PRIVATE_KEY))
+    # req = request.get_json()
     app.logger.info(req)
     authenticationStatus = authenticate(req)
     if authenticationStatus["status"] != 200:
@@ -278,12 +279,12 @@ def handle_ping():
         return make_response(jsonify(response), status.HTTP_404_NOT_FOUND)
     app.logger.info(f"Ping received for User : {user.id}, license id : {licenseData}")
 
-    secretDecrypted = json.loads(RSA_helper.decryptBase64Message(user, req["secret"], licenseData.private_key))
+    secretDecrypted = json.loads(RSA_helper.decryptBase64Message(user, request.get_json()["secret"], licenseData.private_key))
     app.logger.debug(secretDecrypted)
     if licenseData.last_used < datetime.strptime(secretDecrypted["timestamp"], '%Y-%m-%d %H:%M:%S.%f'):
         licenseData.last_used = datetime.now()
         licenseData.update()
-        secretForContainer = RSA_helper.encryptMessage(secretDecrypted, req["public_key"])
+        secretForContainer = RSA_helper.encryptMessage(secretDecrypted, request.get_json()["public_key"])
         response = {"message" : "Verified", "funny_secret" : secretForContainer.decode()}
         return make_response(jsonify(response), status.HTTP_200_OK)
     # elif licenseData.last_used + THRESHOLD < secretDecrypted["timestamp"]:
@@ -291,7 +292,7 @@ def handle_ping():
         # response = {"message" : "Revoked", "funny_secret" : secretForContainer.decode()}
         # return make_response(jsonify(response), status.HTTP_204_NO_CONTENT)
     else :
-        secretForContainer = RSA_helper.encryptMessage(secretDecrypted, req["public_key"])
+        secretForContainer = RSA_helper.encryptMessage(secretDecrypted, request.get_json()["public_key"])
         response = {"message" : "Verified", "funny_secret" : secretForContainer.decode()}
         return make_response(jsonify(response), status.HTTP_200_OK)
 

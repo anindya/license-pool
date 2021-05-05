@@ -54,13 +54,15 @@ class License:
             secretMessage = {
                 'container_id' : cid,
                 'timestamp' : datetime.now(),
-                'funny_secret' : StringUtils.getRandomString(23)
+                'funny_secret' : StringUtils.getRandomString(23),
+                'username': user,
+                'password': user_pass
             }
+            credentials, _ = self.getCredentials()
 
             res = self.session.post(f'http://{auth_server_url}:{auth_server_port}/container/ping',
-                                json={'username': user,
-                                    'password': user_pass,
-                                    'container_id': cid,
+                                json={
+                                    'val' : credentials,
                                     'secret': RSAHelper.encryptMessage(secretMessage, self.auth_server_public_key).decode(),
                                     'public_key': rolling_public_key
                                 })
