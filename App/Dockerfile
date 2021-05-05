@@ -18,7 +18,7 @@ COPY requirements.txt .
 RUN pip3 install --no-cache-dir --user -r requirements.txt
 
 # install the licensing package and app package on TestPyPI
-RUN pip install --no-deps --user -i https://test.pypi.org/simple/ licensing-pkg==0.0.1 app-pkg==0.0.1
+RUN pip install --no-deps --user -i https://test.pypi.org/simple/ licensing-pkg-obfusticated==0.1.1 app-pkg==0.0.1
 
 # Copy the application contents
 COPY . .
