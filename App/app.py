@@ -1,6 +1,7 @@
 from flask import Flask, request, abort
 from socket import *
 import time
+import logging
 
 from AuthServer import license
 
@@ -9,6 +10,10 @@ serverPort = 9090
 
 app = Flask(__name__)
 #app.debug = True
+# config logger
+logging.basicConfig()
+app.logger.setLevel(logging.INFO)
+
 licenseObj = license.License()
 
 @app.route("/")
@@ -23,7 +28,7 @@ def fibonacci():
             _, status = licenseObj.getLicense()
             if status != 200:
                 raise Exception(403)
-        print("Got a request: ", request.args.get("number"))
+        app.logger.info("Got a request: {}".format(request.args.get("number")))
         n = int(request.args.get("number"))
     except:
         return "Forbidden", 403
@@ -33,7 +38,7 @@ def fibonacci():
 def giveupLicense():
     try:
         if not licenseObj.is_valid():
-            print("Container has no valid license. exit.")
+            app.logger.info("Container has no valid license. exit.")
             abort(500)
         licenseObj.giveupLicense()
     except:
