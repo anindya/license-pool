@@ -118,9 +118,30 @@ Add additional notes about how to deploy this on a live system -->
 - The `Vagrantfile`, `Dockerfile`, `docker-compose.yml`, `config.py` and the `service` directory are based on John J. Rofrano's [nyu-devops/lab-kubernetes](https://github.com/nyu-devops/lab-kubernetes) and [nyu-devops/lab-flask-tdd](https://github.com/nyu-devops/lab-flask-tdd)
 
 ## (Optional) How to rebuild obfuscated package
-If you changed code in `App/`, **Inside the vagrant VM**, run
-```sh
-   cd /vagrant
-   bash App/obfuscate.sh
-```
-The new obfuscated package will be in `dist/`.
+1. If you changed origianl source code (under `original/`) in `licensing-pkg/` or `app-pkg/`, you need to **1) obfuscate the code**, **2) packaging it**, and **3) uploading it**. You might also need to **4) update `App_dist`**.
+   1. obfuscate the code:
+        ```sh
+        # Inside the vagrant VM
+        cd <path to pkg> && sh obfuscate.sh
+        ``` 
+        the obfuscated code will be put under `src/`. `pytransform/` will be copied to `App/`.
+   2. manually modify the path to pytransform in the `__init__.py` file:
+        ```py
+        from .pytransform import pyarmor_runtime
+        pyarmor_runtime('<path to pytransform inside container>') 
+        # need to modify the path manually, 
+        # this should be the path of pytransform inside the Docker container. 
+        # Now we use:
+        # '/app/license-pkg/pytransform' for licensing-pkg
+        # '/app/app_pkg/pytransform' for app-pkg
+        ```
+   3. update the version in `setup.cfg` then follow the [tutorial](https://packaging.python.org/tutorials/packaging-projects/#generating-distribution-archives) to generate archives and upload it. (NOTE: **use your local machine** for building the distribution archives, since virtualbox will encounter some error.)
+   4. update package version in `App/Dockerfile` and follow the next step to update `App_dist/`
+
+2.  If you changed code in `App/`, run
+    ```sh
+    # Inside the vagrant VM
+    cd /vagrant
+    sh App/obfuscate.sh
+    ```
+    The new obfuscated package will be in `App_dist/`.
